@@ -1,7 +1,7 @@
 ---
 title: 'GGIS 224 - Lab 3'
-author: 'Your name, Environmental Data Science @UIUC '
-date: "x/x/2024"
+author: 'Jonathan Bernard Widjajakusuma, Environmental Data Science @UIUC '
+date: "02/01/2024"
 output:
   html_document: default
   word_document: default
@@ -28,8 +28,7 @@ This assignment uses the *Chives* dataset from [chichives.com](https://chichives
 Download and open Lab3 folder (including the **.geojson** file and this **RMarkdown** file) on your system, or RStudio Cloud environment. Open the RmD file in RStudio. Set your working directory. 
 
 ```{r setwd}
-setwd(r"(D:\E\Teaching\UIUC\GGIS224\Labs\Lab3\Lab3)")
-# Replace "D:\E\Teaching\UIUC\GGIS224\Labs\Lab3\Lab3" by your own working directory.
+setwd("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Labs/Lab3")
 ```
 
 Next, load up all the libraries needed for this assignment.
@@ -58,7 +57,7 @@ Over the past few weeks, we've been reading about, coding through examples of, a
 Use the `head()` function to inspect the data (uncomment on your own machine.) . There are many other functions to use, if you prefer, like `glimpse`.
 
 ```{r head}
-#head(chives)
+head(chives)
 ```
 
 How many census tracts do we have in this dataset? Use the `dim()` function to check. 
@@ -87,7 +86,7 @@ Let's explore data breaks further. Here's one way of selecting all census tracts
 fewTrees = chives %>% 
   filter(trees_crown_den < 10)
 
-#head(fewTrees)
+head(fewTrees)
 ```
 
 82 features were selected, meaning 82 out of all census tracts in the city have less than 10% of their areas covered by trees.
@@ -98,8 +97,8 @@ What's another way to do this (ie. query your data)? Use a different selection o
 
 ```{r Question-1}
 
-  ### ADD YOUR CODE HERE ###  
-
+  fewTreesTwo = subset(chives, trees_crown_den < 10)
+  head(fewTreesTwo)
 ```
 
 ---
@@ -138,18 +137,30 @@ We can see that several tracts could be found in areas with fewer trees, and hig
 
 Generate and run the query (with 2 criteria).
 
-```{r Question-2}
-
-  ### ADD YOUR CODE HERE ###  
-
+```{r Question-2-tree}
+  tm_shape(chives) + tm_fill() + tm_shape(fewTrees) + tm_fill("trees_area")
 ```
 
+```{r Question-2-treehigh}
+  # Areas with high tree area (above 200,000)
+  high_tree_area <- chives %>% filter (trees_area > 200000)
+  tm_shape(chives) + tm_fill() + tm_shape(high_tree_area) + tm_fill(col = "green")
+```
+
+```{r Question-2-cancer}
+  # Areas with low cancer rate (above 400)
+  tm_shape(chives) + tm_fill() + tm_shape(fewTrees) + tm_fill("CancerRt")
+```
+```{r Question-2-cancerlow}
+  low_cancer_rate <- chives %>% filter (CancerRt < 400)
+  tm_shape(chives) + tm_fill() + tm_shape(high_tree_area) + tm_fill(col = "brown")
+
+```
 ### Question 3
 
 Explain why you selected this query, and  briefly describe any interesting patterns you discovered.
 
-*ADD YOUR DESCRIPTION HERE.*
-
+I chose these 2 queries because I wanted to know if there is any connection between the number of trees in an area and the cancer rate of the population in that same area. Because, back in my home country, Indonesia, a lot of people smoke and the air pollution is really bad, therefore the cancer rate is quite high. Since it's known that planting more trees helps to reduce pollution in the area I wanted to visualize the relationship of these 2 variables. So I used "trees_area" and "CancerRt". My hypothesis was that if there are more trees in an area the cancer rate will be lower in that area. I chose the threshold of 200,000 for trees because it was about the median values for it, and 400 for cancer rate because of the same reason. By plotting both variables in a map, I see a very strong correlation between areas which has a lot of trees and areas who has a lower cancer rate. The relationship is very clear that more trees will lead to lower cancer rate. Therefore, this confirms my hypothesis. This was really interesting because the correlation was very strong and its clear of the positive impacts of planting more trees.
 ---
 
 Let's take data wrangling a bit further and start to aggregate our dataset. We will use `group_by` and `summarise` functions from the `tidyverse` library we're using. (Technically, they're from the `dplyr` package within the `tidyverse`.) 
@@ -185,8 +196,15 @@ Your code should also output a table view of the data.
 
 ```{r Question-4}
 
-  ### ADD YOUR CODE HERE ###  
-
+  treeComTwo <- chives %>% 
+    group_by(community) %>%
+      summarize(Trees = sum(trees_n),
+                TotTracts = n(),
+                average_population = mean(acs_population, na.rm = TRUE),
+                average_cancer_rate = mean(CancerRt, na.rn = TRUE),
+                average_hardship = mean(hardship, na.rm = TRUE),
+                average_asthma_rate = mean(asthma_age_adj_rate, na.rm = TRUE))
+head(treeComTwo)
 ```
 
 **Pro Tip:** If there are null or NA variables in the census tracts, you won't get a mean value in aggregate. To force an average when some areas may have values (and others remain NA/excluded) add  `na.rm = TRUE`. For example: `mean(trees, na.rm=TRUE)`.
@@ -196,11 +214,48 @@ Your code should also output a table view of the data.
 Generate three maps of three different variables at the community area level using `tmap`. Try to work with thoughtful `tmap` parameters including data classification method! 
 Review the lecture notes and the reading materials of Week 3 for this question.  
 
-```{r Question-5}
+```{r Question-5-cancer}
 
-  ### ADD YOUR CODE HERE ###  
-
+  # Map of Average Cancer Rate
+  map_average_CancerRt <- tm_shape(treeComTwo) +
+    tm_fill(col = "average_cancer_rate", style = "quantile") + 
+    tm_borders(col = "gray", lwd = 0.5) + 
+    tm_legend(outside = TRUE) +
+    tm_scale_bar(position = c("left", "bottom")) +
+    tm_layout(
+      title = "Average Cancer Rate by Community in the Chicago Area",
+    )
+print(map_average_CancerRt)
 ```
+
+```{r Question-5-asthma}
+
+  # Map of Average Asthma Rate
+  map_average_asthma_rate <- tm_shape(treeComTwo) +
+    tm_fill(col = "average_asthma_rate", style = "quantile") + 
+    tm_borders(col = "gray", lwd = 0.5) + 
+    tm_legend(outside = TRUE) +
+    tm_scale_bar(position = c("left", "bottom")) +
+    tm_layout(
+      title = "Average Asthma Rate by Community in the Chicago Area",
+    )
+print(map_average_asthma_rate)
+```
+
+```{r Question-5-hardship}
+
+    # Map of Average Hardship
+  map_average_hardship <- tm_shape(treeComTwo) +
+    tm_fill(col = "average_hardship", style = "quantile") + 
+    tm_borders(col = "gray", lwd = 0.5) + 
+    tm_legend(outside = TRUE) +
+    tm_scale_bar(position = c("left", "bottom")) +
+    tm_layout(
+      title = "Average Hardship by Community in the Chicago Area",
+    )
+print(map_average_hardship)
+```
+
 
 ---
 
