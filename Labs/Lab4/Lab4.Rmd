@@ -1,7 +1,7 @@
 ---
 title: 'GGIS 224 - Lab 4'
-author: 'Your name, Environmental Data Science @UIUC '
-date: "x/x/2024"
+author: 'Jonathan Bernard Widjajakusuma, Environmental Data Science @UIUC '
+date: "12/2/2024"
 output:
   html_document: default
   word_document: default
@@ -49,16 +49,20 @@ Q1. It was established in Section 4.2 of Chapter 4 that Canterbury was the regio
 
 ```{r code chunk for Q1 (1 pt)}
 #Enter your code chunk that solves the question. Please leave comments as in detail as possible to show your logical development. 
+
 #For example, you can start with:
+#Subset the boundary of Canterbury from nz, using attribute subsetting.
+
 canterbury = nz |> filter(Name == "Canterbury") #Subset the boundary of Canterbury from nz, using attribute subsetting. 
 canterbury_height = nz_height[canterbury, ] #Subset the high points from nz_height that are intersected by Canterbury, using spatial subsetting. 
 
-#Continue your code below to find how many high points are in the Canterbury region, then type your answer on line 61:
-
+#Subset the high points from nz_height that are intersected by Canterbury, using spatial subsetting.
+high_points <- nrow(canterbury_height)
+high_points
 ```
 How many of these high points does the Canterbury region contain?
 
-*ADD YOUR ANSWER HERE.*
+*70*
 
 ---
 
@@ -66,6 +70,21 @@ Q2. Plot the result of Q1 using the plot() function to create a map showing (1) 
 
 ```{r code chunk for Q2 (3 pts)}
 #Enter your code chunk that creates the plot.
+plot(st_geometry(nz))
+plot(st_geometry(canterbury), col = "yellow", add = TRUE)
+
+# Plot high points in Canterbury in red X (if any)
+if (nrow(canterbury_height) > 0) {
+  coords_canterbury_height <- st_coordinates(canterbury_height)
+  points(coords_canterbury_height, col = "red", pch = 4)
+}
+
+# Plot high points in other parts of New Zealand in blue circle (if any)
+other_heights <- nz_height[canterbury, , op=st_disjoint]
+if (nrow(other_heights) > 0) {
+  coords_other_height <- st_coordinates(other_heights)
+  points(coords_other_height, col = "blue", pch = 1)
+}
 ```
 
 ---
@@ -75,16 +94,27 @@ Q3. Which region has the second highest number of nz_height points, and how many
 BONUS (+1 pt): What is the average elevation of the high points within this region (which has the second highest number of high points)? 
 
 ```{r code chunk for Q3 (2 pts)}
-#Enter your code chunk that answers the question. 
+#Enter your code chunk that answers the question.
+nz_height_region <- st_join(nz_height, nz)
+
+# Aggregate the high points count per region and calculate the average elevation
+aggregate_data <- nz_height_region %>%
+  group_by(Name) %>%
+  summarize(Count = n(), Average_Elevation = mean(elevation))
+
+# Find the region with the second highest number of high points
+aggregate_data <- aggregate_data[order(-aggregate_data$Count),]
+second_highest <- aggregate_data[2, ]
+second_highest
 ```
 
 What is the region and how many does it have?
 
-*ADD YOUR ANSWER HERE.*
+*The West Coast, with 22 high points*
 
 What is the average elevation of the high points within this region (Extra Credit +1 pt)? 
 
-*ADD YOUR ANSWER HERE.*
+*2889.455*
 
 ---
 
@@ -100,13 +130,30 @@ Then, (6) create another object representing all the states that are within a di
 data(us_states)
 
 #Enter your code to generate the map. 
+colorado <- us_states[us_states$NAME == "Colorado", ]
+
+# plotting all us states
+plot(st_geometry(us_states))
+
+# plot colarado in blue
+plot(st_geometry(colorado), col = "blue", add = TRUE)
+
+# find the contigous states, and plot it in yellow
+contiguos_states_indices <- st_touches(colorado, us_states)[[1]]
+contigous_states <- us_states[contiguos_states_indices, ]
+plot(st_geometry(contigous_states), col = "yellow", add = TRUE)
+
+# find states within 200 miles of colarado and plot with red outline
+states_within_200_indices <- st_is_within_distance(colorado, us_states, dist = 200*1609.34)
+near_states <- us_states[unlist(states_within_200_indices), ]
+plot(st_geometry(near_states), border = "red", add = TRUE, lwd = 2)
 ```
 
 Q5. When you are subsetting the states that are geographically contiguous with Colorado (part of Q4), you can use either st_touches or st_intersects predicates. Experiment the results using both predicates (no need to submit code here) (1 pt).
 
 What difference did you notice? And based on your experiment, can you briefly summarize the difference between st_touches and st_intersects?
 
-*ADD YOUR ANSWER HERE.*
+*The main difference between st_touches and st_intersects is the different types of spatial relationships they identify. st_touches is able to detecet geometries that have the same boundary but does not overlaps. On the other hand, st_intersects have a range of interactions such as overlapping, touching and containment. Therefore it has many different uses.*
 
 ```{r Experiment here for Q5}
 
