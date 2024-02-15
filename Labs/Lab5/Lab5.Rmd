@@ -1,0 +1,194 @@
+---
+title: 'GGIS 224 - Lab 5'
+author: 'xxx, Environmental Data Science @UIUC '
+date: "2/x/2024"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview
+
+In this lab you'll explore a few questions on geometry operations using vector data, and you will be on your way to mastering the basics of unary and binary operations. 
+
+Before starting with these questions, you will need to go through *Chapter 5. Geometry Operations* in the textbook [Geocomputation in R](https://r.geocompx.org/geometry-operations.html). Feel free to skip Section 5.3 for now.
+
+Don't forget to comment your code while answering the questions below.    
+
+Render your completed RmD document by clicking on the "Knit" option in RStudio. Upload the .html file to your lab submission.
+Your uploaded .html file should follow this naming convention: Lab5_FirstNameInitial_LastName.html (for example, Lab5_E_Hall.html).
+
+---
+
+## Environment Setup
+
+Load up all libraries needed for this lab. 
+
+*If you need to install rmapshaper and spDataLarge, make sure to recomment them before you knit your .Rmd for submission. The knitting will not work unless the install.packages lines of code are commented.*
+
+```{r environment-setup, warning=FALSE, message=FALSE}
+library(sf)
+library(terra)
+library(dplyr)
+library(rmapshaper) #to use ms_simplify
+library(spData) #data package needed for this chapter
+library(spDataLarge) #data package needed for this chapter
+
+#may need to install these two packages:
+#install.packages("rmapshaper")
+#install.packages("spDataLarge", repos = "https://nowosad.github.io/drat/", type = "source")
+
+```
+
+Load the necessary datasets for this lab.
+
+```{r Datasets}
+data("nz_height")
+data("nz")
+data("us_states")
+```
+
+
+---
+
+## Explore and answer the following questions. 
+
+*Each question is worth 2 points - total 10 points*
+
+Q1. Generate and plot simplified versions of the nz dataset. Experiment with different values of dTolerance (from 100 to 100,000) for st_simplify() and keep (ranging from 0.5 to 0.00005) for ms_simplify(). And answer the 3 questions (a, b, c) below:
+
+1a) Using st_simplify(), at what 'dTolerance' value does the shape of New Zealand start to break down, making New Zealand unrecognizable? Hint: look at nrows() after each iteration to see if simplification is reducing row number. 
+I have started exploring st_simplify() for you. Keep on changing the 'dTolerance' value to determine which number simplifies NZ too much and input that value below. 
+
+*ADD YOUR ANSWER HERE. *
+
+```{r code chunk for Q1a}
+#Enter your code chunk that explores this question. Please leave comments as in detail as possible to show your logical development. 
+
+plot(st_geometry(nz)) #start with your basemap
+nz_st_simple_1 = st_simplify(nz, dTolerance = 100) #use st_simplify to simply the NZ borders
+plot(st_geometry(nz_st_simple_1), add = TRUE, border = "red") #map those simplified borders
+
+#You can either add and plot multiple st_simplify objects with different dTolerance values and colors for comparison or continue to alter the one nz_st_simple_1 object.
+
+
+
+```
+
+1b) Using ms_simplify(), at what 'keep' value does the shape of New Zealand start to break down, making New Zealand unrecognizable? Using the same method as 1a, keep on changing the 'keep' value to determine which number simplifies NZ too much and input that value below. Refer to Q1 for the appropriate range of values to test.  
+
+*ADD YOUR ANSWER HERE. *
+
+```{r code chunk for Q1b}
+#explore ms_simplify() here:
+
+
+```
+
+1c) What is different about the results from st_simplify() compared with the results of ms_simplify()? What problems does this create and how can this be resolved? Refer to the reading (Chapter 5, section 5.2.1) to help you answer this question.
+
+*ADD YOUR ANSWER HERE. *
+
+---
+
+Q2. In the first exercise in Chapter 4 (Spatial data operations), it was established that Canterbury region had 70 of the 101 highest points in New Zealand. Using st_buffer(), how many points in nz_height are within 100 km of Canterbury? Plot your results (Section 5.2.3 of reading).
+Step 1: Filter Canterbury from nz.
+Step 2: Double check that the coordinate system is in meters.
+Step 3: Set a 100km buffer surrounding Canterbury.
+Step 4: Subset how many nz high points are within the buffer.
+Step 5: Map it.
+
+```{r code chunk for Q2}
+#Enter your code chunk that explores this question. Please leave comments as in detail as possible to show your logical development. 
+  
+  
+
+```
+
+How many points in nz_height are within 100 km of Canterbury?
+
+*ADD YOUR ANSWER HERE. *
+
+---
+
+Q3. How far is the geographic centroid of Canterbury from the centroid of New Zealand?
+
+a) Using st_centroid() (Section 5.2.2), find the geographic centroid of New Zealand. Notice that 'st_centroid(nz)' outputs the centroid of each region. Use a function to combine all the regions to only get one centroid point for the whole country (Hint: section 5.2.7). 
+Map the result.
+
+```{r code chunk for Q3a}
+#Enter your code chunk that solves this question. Please leave comments as in detail as possible to show your logical development. 
+
+
+```
+
+b) Find the distance from the NZ centroid from the geographic centroid of Canterbury.  
+
+```{r code chunk for Q3b}
+
+```
+
+
+*ADD YOUR ANSWER (in meters) HERE. *
+
+---
+
+In order to answer Q4, go over this example from the reading, section 5.2.5 on how to create circles. **This is an example, no need to add code to this chunk.**
+```{r Example}
+#First we create 2 points, where 0,1 and 1,1 are its location. These are the center points of our circles
+a = st_sfc(st_point(c(0, 1))) 
+b = st_sfc(st_point(c(1, 1)))
+#then we convert the center points into circles with a radius of 1 and can plot them
+a_circle = st_buffer(a, dist = 1) 
+b_circle = st_buffer(b, dist = 1)
+plot(a_circle)
+plot(b_circle, add=TRUE)
+```
+
+
+Q4. Using what you learned in the above code chunk, generate a circle with a center of (0,0) and a radius of 5, and then another circle with a center of (7,1) and a radius of 6. Follow the code examples in section 5.2.6 to generate 40 points that are randomly distributed in the bounding box of the two circles. Then subset the points that are contained within both circles. 
+
+Use two methods to subset the points: (1) using the spatial predicate st_intersects() and (2) using the binary operation st_intersection() .
+
+Make a plot showing the two circles, your 40 random points, and the highlighted points within both circles. 
+
+BONUS (+1 pt): Display both methods for subsetting the points on the same plot. Make sure they are both visible and can be differenciated even though they display the same information.
+
+```{r code chunk for Q4}
+#Enter your code chunk that solves this question. Please leave comments as in detail as possible to show your logical development. 
+
+
+
+
+```
+
+---
+
+Q5. Calculate the length of the boundary lines of US states in meters. Which state has the longest border and which has the shortest?
+Hint: The st_length function only computes the length of LINESTRING or MULTILINESTRING geometries. 
+Step 1: First make us_states geometry compatible with st_length - it is currently a POLYGON.
+Step 2: Calculate state line length as a new object.
+Step 3: Assign state lengths to a new attribute in us_states.
+Step 4: Order by border length so you can see which state has the longest and the shortest. border lengths. Hint: https://dplyr.tidyverse.org/reference/slice.html. 
+
+```{r code chunk for Q5}
+#Enter your code chunk that solves this question. Please leave comments as in detail as possible to show your logical development. 
+
+
+
+
+```
+
+Which state has the longest border and which has the shortest?
+
+*ADD YOUR ANSWER HERE. *
+
+---
+
+Render your document by clicking on the "Knit" option in RStudio. Upload the .html file to your assignment submission!
+
+.
