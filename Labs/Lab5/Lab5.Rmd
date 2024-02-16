@@ -39,8 +39,8 @@ library(spData) #data package needed for this chapter
 library(spDataLarge) #data package needed for this chapter
 
 #may need to install these two packages:
-#install.packages("rmapshaper")
-#install.packages("spDataLarge", repos = "https://nowosad.github.io/drat/", type = "source")
+install.packages("rmapshaper")
+install.packages("spDataLarge", repos = "https://nowosad.github.io/drat/", type = "source")
 
 ```
 
@@ -64,34 +64,82 @@ Q1. Generate and plot simplified versions of the nz dataset. Experiment with dif
 1a) Using st_simplify(), at what 'dTolerance' value does the shape of New Zealand start to break down, making New Zealand unrecognizable? Hint: look at nrows() after each iteration to see if simplification is reducing row number. 
 I have started exploring st_simplify() for you. Keep on changing the 'dTolerance' value to determine which number simplifies NZ too much and input that value below. 
 
-*ADD YOUR ANSWER HERE. *
+*dTolerance value = 100000 *
 
 ```{r code chunk for Q1a}
 #Enter your code chunk that explores this question. Please leave comments as in detail as possible to show your logical development. 
 
-plot(st_geometry(nz)) #start with your basemap
-nz_st_simple_1 = st_simplify(nz, dTolerance = 100) #use st_simplify to simply the NZ borders
-plot(st_geometry(nz_st_simple_1), add = TRUE, border = "red") #map those simplified borders
+par(mfrow = c(1, 5)) # to layout maps beside each other
+
+plot(st_geometry(nz), main = "Original", col = "white") #start with your basemap
+
+# Simplify with dTolerance = 100
+nz_st_simple_1 <- st_simplify(nz, dTolerance = 100) #use st_simplify to simply the NZ borders
+plot(st_geometry(nz_st_simple_1), main = "dTolerance = 100", col = "red") #map those simplified borders
+nrow(nz_st_simple_1) # 16 rows
 
 #You can either add and plot multiple st_simplify objects with different dTolerance values and colors for comparison or continue to alter the one nz_st_simple_1 object.
 
+# tolerance value = 1000
+nz_st_simple_2 <- st_simplify(nz, dTolerance = 1000)  #use st_simplify to simply the NZ borders
+plot(st_geometry(nz_st_simple_2), main = "dTolerance = 1000", col = "blue") #map those simplified borders
+nrow(nz_st_simple_2) # 16 rows
 
+# tolerance value = 10000
+nz_st_simple_3 <- st_simplify(nz, dTolerance = 10000) #use st_simplify to simply the NZ borders
+plot(st_geometry(nz_st_simple_3), main = "dTolerance = 10000", col = "green") #map those simplified borders
+nrow(nz_st_simple_3) #16 rows
+
+# tolerance value = 100000
+nz_st_simple_4 <- st_simplify(nz, dTolerance = 100000) #use st_simplify to simply the NZ borders
+plot(st_geometry(nz_st_simple_4), main = "dTolerance = 100000", col = "orange") #map those simplified borders
+nrow(nz_st_simple_4) #16 rows
+
+par(mfrow = c(1, 1))
 
 ```
 
 1b) Using ms_simplify(), at what 'keep' value does the shape of New Zealand start to break down, making New Zealand unrecognizable? Using the same method as 1a, keep on changing the 'keep' value to determine which number simplifies NZ too much and input that value below. Refer to Q1 for the appropriate range of values to test.  
 
-*ADD YOUR ANSWER HERE. *
+*When keep is in the range of 0.00005 to 0.005 *
 
 ```{r code chunk for Q1b}
-#explore ms_simplify() here:
+#explore ms_simplify() here: (ranging from 0.5 to 0.00005)
 
+par(mfrow = c(1, 6)) # to layout maps beside each other
+
+plot(st_geometry(nz), main = "Original", col = "white") #start with your basemap
+
+# keep value = 0.5
+nz_st_simple_5 <- ms_simplify(nz, keep = 0.5) 
+plot(st_geometry(nz_st_simple_5), main = "Keep = 0.5", col = "red")
+nrow(nz_st_simple_5) # 16 rows
+
+# keep value = 0.05
+nz_st_simple_6 <- ms_simplify(nz, keep = 0.05) 
+plot(st_geometry(nz_st_simple_6), main = "Keep = 0.05", col = "blue")
+nrow(nz_st_simple_6) # 16 rows
+
+# keep value = 0.005
+nz_st_simple_7 <- ms_simplify(nz, keep = 0.005) 
+plot(st_geometry(nz_st_simple_7), main = "Keep = 0.005", col = "green")
+nrow(nz_st_simple_7) # 14 rows
+
+# keep value = 0.0005
+nz_st_simple_8 <- ms_simplify(nz, keep = 0.0005) 
+plot(st_geometry(nz_st_simple_8), main = "Keep = 0.0005", col = "orange")
+nrow(nz_st_simple_8) # 14 rows
+
+# keep value = 0.00005
+nz_st_simple_8 <- ms_simplify(nz, keep = 0.00005) 
+plot(st_geometry(nz_st_simple_8), main = "Keep = 0.00005", col = "yellow")
+nrow(nz_st_simple_8) # 14 rows
 
 ```
 
 1c) What is different about the results from st_simplify() compared with the results of ms_simplify()? What problems does this create and how can this be resolved? Refer to the reading (Chapter 5, section 5.2.1) to help you answer this question.
 
-*ADD YOUR ANSWER HERE. *
+*The difference is that st_simplify() doesn't lose the shape as quickly as ms_simplify(), we can see that when the the dTolerance value is 100000, the map drastically loses shape. However, for ms_simplify() the map loses shape starting from when keep value is 0.05 and there is no more resemblance when keep == 0.00005. Furthermore, even after hte dTolerance value is 100000 no rows are lost, on the other hand when keep is 0.005 the number of rows already reduced by 2 from 16 to 14. But, topology is lost with st_simplify() leading to holes in the map. Both of these methods of simplifacation can cause problems, which is the loss of detail, we can see from the maps when the keep value or dTolerance value reaches a certain threhold, the detail of the maps is significantly reduced. Especially, with the loss of topology from st_simplify() even more detail is loss. To resolve this, choose the optimal dTolerance and keep value to prevent loss of detail and oversimplification, and to preserve topology and preventing holes on the map, ms_simplify() may be more appropriate in some cases.*
 
 ---
 
@@ -105,13 +153,33 @@ Step 5: Map it.
 ```{r code chunk for Q2}
 #Enter your code chunk that explores this question. Please leave comments as in detail as possible to show your logical development. 
   
-  
+# step 1: filter canterbury from nz
+canterbury <- nz %>% 
+  filter(Name == "Canterbury")
+
+# step 2: double check that the coordinate system is in meters
+st_crs(canterbury) # already in meters
+
+# step 3: set a 100km buffer surrounding Canterbury
+canterbury_buffer <- st_buffer(canterbury, dist = 100000)
+
+# step 4: subset how many nz high points are within the buffer
+intersects <- st_intersects(nz_height, canterbury_buffer, sparse = FALSE)
+nz_height_within_buffer <- nz_height[intersects, ]
+
+# step 5: map it
+plot(st_geometry(canterbury_buffer), col = 'yellow', main = "Canterbury Buffer", border = NA) # plotting the buffer
+plot(st_geometry(canterbury), border = 'black', add = TRUE) # plot the base Canterbury region
+plot(st_geometry(nz_height_within_buffer), col = 'red', add = TRUE) # plotting the high points
+
+# number of points
+print(nrow(nz_height_within_buffer)) # 95 points
 
 ```
 
 How many points in nz_height are within 100 km of Canterbury?
 
-*ADD YOUR ANSWER HERE. *
+*95*
 
 ---
 
