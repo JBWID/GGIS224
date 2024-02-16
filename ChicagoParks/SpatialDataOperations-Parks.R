@@ -14,7 +14,7 @@ library(dplyr) #Load data wrangling library
 ################################################################################
 
 #Define your directory that contains the Parks.geojson data
-setwd(".../ChicagoParks")
+setwd("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/ChicagoParks")
 
 #Read Parks.geojson (parks in Chicago)
 chiparks <- st_read("Parks.geojson")
@@ -28,7 +28,7 @@ tm_shape(chiparks) + tm_dots()
 
 
 #Read in Chicago tract level data (chives-data.geojson) from Lab 3
-chitracts <- st_read(".../Lab3/chives-data.geojson") #Enter your directory
+chitracts <- st_read("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Labs/Lab3/chives-data.geojson") #Enter your directory
 
 #Recall from Lab3:
 #The Chives dataset was downloaded from chichives.com. 
@@ -48,7 +48,7 @@ st_crs(chiparks)
 st_crs(chitracts)
 
 #Transform to CRS of chiparks
-#chitracts <- st_transform(chitracts, st_crs(chiparks))
+chitracts <- st_transform(chitracts, st_crs(chiparks))
 
 #Check data attributes and contents
 head(chiparks)
