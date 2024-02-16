@@ -191,6 +191,15 @@ Map the result.
 ```{r code chunk for Q3a}
 #Enter your code chunk that solves this question. Please leave comments as in detail as possible to show your logical development. 
 
+# combining all regions into one feature using st_union
+nz_combined <- st_union(nz)
+
+# calculating the centroid of the combined feature
+nz_centroid <- st_centroid(nz_combined)
+
+# plotting the map to visualize the centroid on the map of New Zealand
+plot(st_geometry(nz), col = 'lightblue', main = "Centroid of New Zealand")
+plot(st_geometry(nz_centroid), col = 'red', add = TRUE, pch = 20, cex = 3)
 
 ```
 
@@ -198,10 +207,26 @@ b) Find the distance from the NZ centroid from the geographic centroid of Canter
 
 ```{r code chunk for Q3b}
 
+# calculating the centroid of Canterbury
+canterbury_centroid <- st_centroid(canterbury)
+
+# combining all regions into one feature using st_union
+nz_combined <- st_union(nz)
+
+# calculating the centroid of the combined feature
+nz_centroid <- st_centroid(nz_combined)
+
+# find the distance between the centroid of Canterbury and the centroid of New Zealand
+distance <- st_distance(canterbury_centroid, nz_centroid)
+
+# display the distance / result
+print(distance)
+
+
 ```
 
 
-*ADD YOUR ANSWER (in meters) HERE. *
+*234192.6 meters *
 
 ---
 
@@ -229,8 +254,39 @@ BONUS (+1 pt): Display both methods for subsetting the points on the same plot. 
 ```{r code chunk for Q4}
 #Enter your code chunk that solves this question. Please leave comments as in detail as possible to show your logical development. 
 
+# create 2 points based on the parameters given
+point1 <- st_sfc(st_point(c(0, 0)))
+point2 <- st_sfc(st_point(c(7, 1)))
 
+# creating circles of the 2 points
+circle1 <- st_buffer(point1, dist = 5)
+circle2 <- st_buffer(point2, dist = 6)
 
+# combining the 2 circles
+combined_circles <- st_union(circle1, circle2)
+
+# finding the bounding box
+bbox <- st_bbox(combined_circles)
+
+# generate random points
+set.seed(2024)
+points <- st_sample(x = st_as_sfc(bbox), size = 40, type = "random")
+
+# use st_intersects to find which points intersect with each circle
+intersects_circle1 <- st_intersects(points, circle1)
+intersects_circle2 <- st_intersects(points, circle2)
+points_in_both <- lengths(intersects_circle1) > 0 & lengths(intersects_circle2) > 0
+indices_in_both <- which(points_in_both)
+points_df <- st_as_sf(points) %>% 
+  mutate(index = row_number()) %>%
+  filter(index %in% indices_in_both)
+
+# Proceed to plotting
+plot(st_geometry(combined_circles)) # plotting combined circles
+plot(st_geometry(circle1), border = "blue", add = TRUE) # plotting first circle
+plot(st_geometry(circle2), border = "red", add = TRUE) # plotting second circle
+plot(st_geometry(points), col = "black", pch = 20, add = TRUE) # plotting random points as circles filled in black
+plot(st_geometry(points_df), col = "green", pch = 20, add = TRUE) # highlighting points in green that lies in the intersection 
 
 ```
 
@@ -246,14 +302,34 @@ Step 4: Order by border length so you can see which state has the longest and th
 ```{r code chunk for Q5}
 #Enter your code chunk that solves this question. Please leave comments as in detail as possible to show your logical development. 
 
+# step 1: First make us_states geometry compatible with st_length - it is currently a POLYGON.
+us_states_lines <- st_boundary(us_states)
 
+# step 2: Calculate state line length as a new object.
+state_lengths <- st_length(us_states_lines)
+
+# step 3: Assign state lengths to a new attribute in us_states.
+us_states$border_length <- state_lengths
+
+# step 4: Order by border length so you can see which state has the longest and the shortest border lengths.
+ordered_states <- us_states %>%
+  arrange(border_length) %>%
+  select(NAME, border_length)
+
+# finding longest and shortest border
+shortest <- head(ordered_states, 1)
+longest <- tail(ordered_states, 1)
+
+# printing the values using the correct column name for state names
+print(paste("Shortest border state:", shortest$NAME))
+print(paste("Longest border state:", longest$NAME))
 
 
 ```
 
 Which state has the longest border and which has the shortest?
 
-*ADD YOUR ANSWER HERE. *
+*Longest border = Texas, shortest border = District of Columbia *
 
 ---
 
