@@ -39,8 +39,8 @@ library(spData) #data package needed for this chapter
 library(spDataLarge) #data package needed for this chapter
 
 #may need to install these two packages:
-install.packages("rmapshaper")
-install.packages("spDataLarge", repos = "https://nowosad.github.io/drat/", type = "source")
+#install.packages("rmapshaper")
+#install.packages("spDataLarge", repos = "https://nowosad.github.io/drat/", type = "source")
 
 ```
 
@@ -281,7 +281,7 @@ points_df <- st_as_sf(points) %>%
   mutate(index = row_number()) %>%
   filter(index %in% indices_in_both)
 
-# Proceed to plotting
+# plot the circles and the points
 plot(st_geometry(combined_circles)) # plotting combined circles
 plot(st_geometry(circle1), border = "blue", add = TRUE) # plotting first circle
 plot(st_geometry(circle2), border = "red", add = TRUE) # plotting second circle
