@@ -1,0 +1,94 @@
+---
+title: 'GGIS 224 - Lab 6'
+author: 'xxx, Environmental Data Science @UIUC '
+date: "2/x/2024"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview
+
+In this lab you'll explore the pattern of spatial clustering (autocorrelation) in the Chicago area using the ChiVes dataset.  
+
+Before starting the lab, make sure you've gone through [3. Spatial Cluster Detection](https://makosak.github.io/Intro2RSpatialMed/05-LISA.html).
+
+You will have a lot of flexibility in this lab, so please treat it as a mini-project. Follow the instruction below to explore the lab, and enjoy!
+
+---
+
+## Environment Setup
+
+Load up all libraries needed for this lab. 
+
+```{r environment-setup, warning=FALSE, message=FALSE}
+library(sf)
+library(dplyr)
+library(tmap)
+library(rgeoda)
+```
+
+---
+
+Read in the Chicago census tract level data (chives-data.geojson) that we used in Lab 3.
+
+```{r code chunk for reading the data}
+chitracts = st_read("C:/Users/emmach3/Desktop/GGIS224/Lab6/chives-data.geojson") 
+#Change the pathway to the location of your chives-data.geojson
+```
+
+
+Recall that the Chives dataset was downloaded from [the ChiVes project website](https://chichives.com).
+
+ChiVes is a collaborative project that integrates and visualizes data in Chicago. 
+A handful of key metrics, such as tree cover, air pollution estimates, heat island effects, 
+traffic volumes, and social vulnerability index, help to reveal where in the city 
+people face particular challenges as we work towards a healthier Chicago. 
+You will need to review the Data page to understand the variable names and definitions. 
+Check out what attributes are available and what they define and measure in [the ChiVes project website](https://chichives.com).
+
+For your submission, please extend this R Markdown file to explore at least one attribute/variable given in chives-data, and calculate and map its Local Moran’s I (LISA) and the associated significance test. Refer to the scripts in [3. Spatial Cluster Detection](https://makosak.github.io/Intro2RSpatialMed/05-LISA.html) for an example. Let's use the default settings of 999 permutations and a p-value of 0.05; but since there are 999 permutations, it allows you to test the significance with the smallest p-value of 0.001. 
+
+Feel free to compare the result using a rook contiguity weight and the result using a queen contiguity weight (with either 1 or 2 orders). 
+
+Refer to the rgeoda tutorial for more information on spatial weights: https://geodacenter.github.io/rgeoda/articles/rgeoda_tutorial.html#spatial-weights.  
+
+**Your code should include:** 
+1. A choropleth map determining which Chives variable you want to explore for spatial autocorrelation (1 pt).
+2. A spatial contiguity weight matrix necessary for calculating LISA (1 pt).
+3. LISA calculation (2 pts). 
+4. A map displaying LISA results (2 pts).
+5. A map displaying LISA significance test (certainty check) results (2 pts).
+
+**Following your code and maps, answer the following discussions:**
+1. What is your hypothesis of the spatial autocorrelation pattern of the attribute you explored? Do you think your calculated result overall supports your hypothesis? (1 pt). 
+2. Did you identify any interesting hot spots and cold spots? And, did you find any census tracts that appear to be outliers? Given your best understanding of the local environments, why do you think those spots and outliers occur? (1 pt). 
+
+[1 bonus point] Calculate the global Moran's I. How do the LISA (local Moran's I) values compare? Do you see any advantage of using LISA? (only need to display a value, no map necessary)
+
+---
+
+```{r code chunk for your calculation and mapping}
+# Enter your scripts for calculating LISA here. 
+```
+
+---
+
+Your discussion.
+
+*ADD YOUR DISCUSSION HERE.*
+
+---
+
+```{r code chunk for bonus point}
+# Enter your scripts for the bonus question here. 
+```
+
+---
+Render your R Markdown document by clicking on the "Knit" option in RStudio. The .html output should include your scripts, calculations, maps, and your text discussion. Upload the .html file to your assignment submission.
+
+.
