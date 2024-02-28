@@ -1,7 +1,7 @@
 ---
 title: 'GGIS 224 - Lab 6'
-author: 'xxx, Environmental Data Science @UIUC '
-date: "2/x/2024"
+author: 'Jonathan Bernard Widjajakusuma, Environmental Data Science @UIUC '
+date: "2/24/2024"
 output:
   html_document: default
   word_document: default
@@ -30,6 +30,7 @@ library(sf)
 library(dplyr)
 library(tmap)
 library(rgeoda)
+
 ```
 
 ---
@@ -37,8 +38,7 @@ library(rgeoda)
 Read in the Chicago census tract level data (chives-data.geojson) that we used in Lab 3.
 
 ```{r code chunk for reading the data}
-chitracts = st_read("C:/Users/emmach3/Desktop/GGIS224/Lab6/chives-data.geojson") 
-#Change the pathway to the location of your chives-data.geojson
+chitracts = st_read("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Labs/Lab6/chives-data.geojson") 
 ```
 
 
@@ -73,19 +73,63 @@ Refer to the rgeoda tutorial for more information on spatial weights: https://ge
 ---
 
 ```{r code chunk for your calculation and mapping}
-# Enter your scripts for calculating LISA here. 
+# plotting the choropleth map of PM2.5 air pollution estimates
+tm_shape(chitracts) +
+  tm_polygons("nn_q3_pm2_5", style="jenks", palette="Reds", title="PM2.5 Air Pollution Estimates") +
+  tm_layout(legend.outside = TRUE, legend.outside.position = "right")
+
+# calculate the spatial weights
+w_rook <- rook_weights(chitracts)
+w_queen <- queen_weights(chitracts, order = 2, include_lower_order = TRUE)
+
+# convert the PM2.5 data as a numeric vector for LISA calculation
+pm25_data <- as.numeric(chitracts[['nn_q3_pm2_5']])
+
+# calculating LISA for the PM2.5 air pollution estimates using queen contiguity weights
+lisa_pm25_queen <- local_moran(w_queen, chitracts['nn_q3_pm2_5'], permutations = 999)
+
+# extract and visualize LISA clusters
+lisa_colors_queen <- lisa_colors(lisa_pm25_queen)
+lisa_labels_queen <- lisa_labels(lisa_pm25_queen)
+lisa_clusters_queen <- lisa_clusters(lisa_pm25_queen)
+
+plot(st_geometry(chitracts), 
+     col=sapply(lisa_clusters_queen, function(x){return(lisa_colors_queen[[x+1]])}), 
+     lwd=0.2)
+title(main = "LISA: PM2.5 Air Pollution Estimates")
+legend('bottomleft', legend = lisa_labels_queen, fill = lisa_colors_queen)
+
+# extract and visualize significance levels
+lisa_p_queen <- lisa_pvalues(lisa_pm25_queen)
+p_labels <- c("Not significant", "p <= 0.05", "p <= 0.01", "p <= 0.001")
+p_colors <- c("#eeeeee", "#84f576", "#53c53c", "#348124")
+
+plot(st_geometry(chitracts), 
+     col=sapply(lisa_p_queen, function(x){
+       if (x <= 0.001) return(p_colors[4])
+       else if (x <= 0.01) return(p_colors[3])
+       else if (x <= 0.05) return(p_colors[2])
+       else return(p_colors[1])
+     }), 
+     , lwd=0.2)
+title(main = "LISA Significance: PM2.5 Air Pollution Estimates")
+legend('bottomleft', legend = p_labels, fill = p_colors)
+
 ```
 
 ---
 
 Your discussion.
 
-*ADD YOUR DISCUSSION HERE.*
+1. Hypothesis
+My hypothesis is that industrial areas and heavy traffic areas would have a significantly higher hot spots due to the higher PM2.5 emissions. On the other hand, areas with less traffic and industrial activity will have more cold spots. The Lisa results supports this hypothesis as significant clustering of high values which are hot spots are around the industrial zones, with lower values which are cold spots in the green dominant areas. There are not really interesting spots as the pattern is quite clear and obvious.
 
+2. Hot Spots and Cold Spots
+The hot spots which have high levels of PM2.5 are concentrated in areas with industrial zones and area of dense traffic. On the other hand the cold spots which have low levels of PM2.5 are usually remote and residential areas which generally means they have less industrial activity. There are some outliers in which PM2.5 levels are significantly higher than its surrounding. I think there could be smaller industrial operations, or small areas where all traffic converge causing significant congestion, therefore causing a spike in the PM2.5 levels.
 ---
 
 ```{r code chunk for bonus point}
-# Enter your scripts for the bonus question here. 
+
 ```
 
 ---
