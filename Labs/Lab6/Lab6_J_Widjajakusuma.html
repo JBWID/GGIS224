@@ -491,6 +491,10 @@ smaller industrial operations, or small areas where all traffic converge
 causing significant congestion, therefore causing a spike in the PM2.5
 levels. —</p></li>
 </ol>
+<pre class="r"><code>local_morans_i_values &lt;- lisa_pm25_queen$GetLISAValues()
+global_morans_i &lt;- mean(local_morans_i_values)
+print(global_morans_i)</code></pre>
+<pre><code>## [1] 0.1115596</code></pre>
 <hr />
 <p>Render your R Markdown document by clicking on the “Knit” option in
 RStudio. The .html output should include your scripts, calculations,

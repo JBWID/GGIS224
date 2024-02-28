@@ -129,6 +129,9 @@ The hot spots which have high levels of PM2.5 are concentrated in areas with ind
 ---
 
 ```{r code chunk for bonus point}
+local_morans_i_values <- lisa_pm25_queen$GetLISAValues()
+global_morans_i <- mean(local_morans_i_values)
+print(global_morans_i)
 
 ```
 
