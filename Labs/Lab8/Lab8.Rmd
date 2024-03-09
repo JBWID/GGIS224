@@ -184,20 +184,12 @@ zcta_data <- get_acs(geography = 'zcta',
 
 
 
-# Step 6: Read Chicago boundary data and transform CRS
+# step 6:
 chicago_boundary_zip <- st_read("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Labs/Lab8/boundaries_chicago.geojson") %>%
   st_transform(4326)
-
-# Transform the CRS of zcta_data_wide to match chicago_boundary_zip
 zcta_data_wide <- st_transform(zcta_data, 4326)
-
-# Perform the intersection
 intersected_data <- st_intersection(zcta_data_wide, chicago_boundary_zip)
-
-# Ensure there are no empty geometries after the intersection
 intersected_data <- intersected_data[!st_is_empty(intersected_data), ]
-
-# Mapping the percentage of 20-24 year olds in each Chicago ZCTA
 tm_shape(intersected_data) +
   tm_polygons("percentage_20_24", palette="-Blues", title="Percentage of 20-24 Year Olds") +
   tm_layout(main.title="Chicago: Percentage of 20-24 Year Olds by ZIP Code",
