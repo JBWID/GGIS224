@@ -168,40 +168,42 @@ tm_shape(chicago_tracts) +
 
 
 # step 5
+variables <- load_variables(2020, "acs5", cache = TRUE)
 zcta_data <- get_acs(geography = 'zcta', 
-                     variables = c(total_population = "B01001A_001", 
-                                   male_20_24 = "B01001A_008", 
-                                   female_20_24 = "B01001A_023"),
+                     variables = c("B01001A_001", "B01001A_008", "B01001A_023"),
                      year = 2020, 
-                     geometry = FALSE) %>%
-  pivot_wider(names_from = variable, values_from = estimate) %>%
-  mutate(percentage_20_24 = ((male_20_24 + female_20_24) / total_population) * 100)
+                     geometry = TRUE) %>%
+  pivot_wider(
+    names_from = variable, 
+    values_from = estimate
+  ) %>%
+  mutate(
+    percentage_20_24 = (`B01001A_008` + `B01001A_023`) / `B01001A_001` * 100
+  ) %>%
+  select(GEOID, NAME, `B01001A_001`, `B01001A_008`, `B01001A_023`, percentage_20_24, geometry)
 
 
 
+# Step 6: Read Chicago boundary data and transform CRS
+chicago_boundary_zip <- st_read("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Labs/Lab8/boundaries_chicago.geojson") %>%
+  st_transform(4326)
 
+# Transform the CRS of zcta_data_wide to match chicago_boundary_zip
+zcta_data_wide <- st_transform(zcta_data, 4326)
 
-# step 6
-chicago_boundary <- st_transform(chicago_boundary, crs = 4326)
-zcta_shapes <- zctas(cb = FALSE) %>% 
-  st_transform(crs = st_crs(chicago_boundary))
+# Perform the intersection
+intersected_data <- st_intersection(zcta_data_wide, chicago_boundary_zip)
 
+# Ensure there are no empty geometries after the intersection
+intersected_data <- intersected_data[!st_is_empty(intersected_data), ]
 
-# intersecting ZCTA data with the Chicago boundary
-chicago_zctas <- st_intersection(zcta_shapes, chicago_boundary)
+# Mapping the percentage of 20-24 year olds in each Chicago ZCTA
+tm_shape(intersected_data) +
+  tm_polygons("percentage_20_24", palette="-Blues", title="Percentage of 20-24 Year Olds") +
+  tm_layout(main.title="Chicago: Percentage of 20-24 Year Olds by ZIP Code",
+            main.title.position="center",
+            frame=FALSE)
 
-# ensuring that no empty geometries are present
-chicago_zctas <- chicago_zctas[!st_is_empty(chicago_zctas), ]
-chicago_zctas <- chicago_zctas %>%
-  rename(GEOID = GEOID20)
-chicago_zcta_data <- chicago_zctas %>%
-  left_join(zcta_data, by = "GEOID")
-
-# mapping
-tm_shape(chicago_zcta_data) +
-  tm_polygons(col = "percentage_20_24", palette = "-Blues", title = "Percentage of 20-24 Year Olds") +
-  tm_layout(main.title = "Percentage of Young Adults (20-24) in Chicago Zip Codes") +
-  tm_borders()
 ```
 
 ---
