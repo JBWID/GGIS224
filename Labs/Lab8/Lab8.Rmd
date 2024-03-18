@@ -79,6 +79,7 @@ library(tidycensus) # to download census variables using ACS API. If not yet ins
 library(tidyverse) # to manipulate and clean data
 library(tigris) # to download census tiger shapefiles, If not yet installed, execute: install.packages("tidycensus")
 library(tmap) # to generate maps
+library(data.table)
 
 #Acquire a census API key:
 #census_api_key("88684a2cf472f4f2df1aa21309bd54cb1b584a15", install = TRUE) #install the key. The key only needs to be installed once. 
@@ -101,6 +102,10 @@ total_pop_data <- get_acs(geography = "tract",
                           county = "Cook",
                           geometry = TRUE)
 
+```
+
+```{r}
+
 # load up population age 20 to 24 (both male and female)
 male_20_24_data <- get_acs(geography = "tract", 
                            variables = "B01001A_008", 
@@ -115,6 +120,9 @@ female_20_24_data <- get_acs(geography = "tract",
                              county = "Cook",
                              geometry = TRUE)
 
+```
+
+```{r}
 # convert sf objects and combine data into a single dataframe
 total_pop_data_df <- as.data.frame(total_pop_data)
 male_20_24_data_df <- as.data.frame(male_20_24_data)
@@ -122,16 +130,17 @@ female_20_24_data_df <- as.data.frame(female_20_24_data)
 combined_data <- total_pop_data_df %>%
   left_join(male_20_24_data_df, by = c("GEOID", "NAME")) %>%
   left_join(female_20_24_data_df, by = c("GEOID", "NAME"))
+```
 
-
+```{r}
 # calculate percentage of population that is aged 20-24
 combined_data <- combined_data %>%
   mutate(percentage_20_24 = ((estimate.y + estimate) / estimate.x) * 100)
 head(combined_data)
+```
 
 
-
-
+```{r}
 # step 3
 combined_data_sf <- st_as_sf(combined_data, sf_column_name = "geometry")
 
@@ -141,13 +150,15 @@ tract_level <- combined_data_sf %>%
   
   # removing empty geometries to avoid problems when mapping
   filter(!st_is_empty(geometry))
+```
 
 
-
+```{r}
 # step 4
 # read in the boundary file provided
 chicago_boundary <- st_read("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Labs/Lab8/boundaries_chicago.geojson")
-
+```
+```{r}
 # making sure that CRS matches (CRS = 4326) for both datasets
 tract_level <- st_transform(tract_level, crs = 4326)
 chicago_boundary <- st_transform(chicago_boundary, crs = 4326)
@@ -157,39 +168,52 @@ chicago_tracts <- st_intersection(tract_level, chicago_boundary)
 
 # double checking that no empty geometries after intersection to avoid problems when mapping
 chicago_tracts <- chicago_tracts[!st_is_empty(chicago_tracts), , drop = FALSE]
+```
+
+```{r}
 
 # mapping the percentage of 20-24 year olds in each Chicago census tract in blue
+data.table(chicago_tracts)
 tm_shape(chicago_tracts) +
   tm_polygons(col = "percentage_20_24", 
               palette = "-Blues", 
               title = "Percentage of 20-24 Year Olds") +
   tm_layout(main.title = "Percentage of Young Adults (20-24) in the Chicago area") + 
   tm_borders(alpha = 0.5)
+```
 
 
+```{r}
 # step 5
-variables <- load_variables(2020, "acs5", cache = TRUE)
 zcta_data <- get_acs(geography = 'zcta', 
-                     variables = c("B01001A_001", "B01001A_008", "B01001A_023"),
+                     variables = c(total_pop = "B01001_001", 
+                                   male_20_24 = "B01001_008",
+                                   female_20_24 = "B01001_043"),
                      year = 2020, 
                      geometry = TRUE) %>%
-  pivot_wider(
-    names_from = variable, 
-    values_from = estimate
-  ) %>%
-  mutate(
-    percentage_20_24 = (`B01001A_008` + `B01001A_023`) / `B01001A_001` * 100
-  ) %>%
-  select(GEOID, NAME, `B01001A_001`, `B01001A_008`, `B01001A_023`, percentage_20_24, geometry)
+  select(GEOID, NAME, variable, estimate) %>%
+  pivot_wider(names_from = variable, values_from = estimate) %>%
+  mutate(percentage_20_24 = (male_20_24 + female_20_24) / total_pop * 100) %>%
+  select(GEOID, NAME, total_pop, male_20_24, female_20_24, percentage_20_24, geometry)
+
+head(zcta_data)
+```
 
 
-
-# step 6:
+```{r}
+# step 6
 chicago_boundary_zip <- st_read("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Labs/Lab8/boundaries_chicago.geojson") %>%
   st_transform(4326)
+
 zcta_data_wide <- st_transform(zcta_data, 4326)
+
 intersected_data <- st_intersection(zcta_data_wide, chicago_boundary_zip)
+
 intersected_data <- intersected_data[!st_is_empty(intersected_data), ]
+
+intersected_data <- intersected_data %>%
+  mutate(percentage_20_24 = ifelse(is.nan(percentage_20_24), NA, percentage_20_24))
+
 tm_shape(intersected_data) +
   tm_polygons("percentage_20_24", palette="-Blues", title="Percentage of 20-24 Year Olds") +
   tm_layout(main.title="Chicago: Percentage of 20-24 Year Olds by ZIP Code",
