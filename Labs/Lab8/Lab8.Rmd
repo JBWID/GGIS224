@@ -89,65 +89,35 @@ Sys.getenv("CENSUS_API_KEY") #Check an already installed census API key
 ---
 
 ```{r code chunk for submission}
-# Step 2
+# step 2
 # load variables for 2020 ACS 5 year estimate
 variables <- load_variables(2020, "acs5", cache = TRUE)
 print(variables) # to look for column names
 
-# load up total population
-total_pop_data <- get_acs(geography = "tract", 
-                          variables = "B01001A_001", 
-                          year = 2020, 
-                          state = "IL", 
-                          county = "Cook",
-                          geometry = TRUE)
+# load up total population and population age 20 to 24
+pop_data <- get_acs(geography = "tract", 
+                    variables = c("S0101_C01_001", "S0101_C01_006"),
+                    year = 2020,
+                    state = "IL",
+                    county = "Cook",
+                    geometry = TRUE) %>%
+  select(GEOID, NAME, estimate, variable) %>%
+  pivot_wider(names_from = variable, values_from = estimate) %>% 
+  mutate(percentage_20_24 = (S0101_C01_006 / S0101_C01_001) * 100) %>%
+  select(GEOID, NAME, total_pop = S0101_C01_001, pop_20_24 = S0101_C01_006, percentage_20_24, geometry)
 
+head(pop_data)
 ```
 
-```{r}
 
-# load up population age 20 to 24 (both male and female)
-male_20_24_data <- get_acs(geography = "tract", 
-                           variables = "B01001A_008", 
-                           year = 2020, 
-                           state = "IL", 
-                           county = "Cook",
-                           geometry = TRUE)
-female_20_24_data <- get_acs(geography = "tract", 
-                             variables = "B01001A_023", 
-                             year = 2020, 
-                             state = "IL", 
-                             county = "Cook",
-                             geometry = TRUE)
 
-```
 
-```{r}
-# convert sf objects and combine data into a single dataframe
-total_pop_data_df <- as.data.frame(total_pop_data)
-male_20_24_data_df <- as.data.frame(male_20_24_data)
-female_20_24_data_df <- as.data.frame(female_20_24_data)
-combined_data <- total_pop_data_df %>%
-  left_join(male_20_24_data_df, by = c("GEOID", "NAME")) %>%
-  left_join(female_20_24_data_df, by = c("GEOID", "NAME"))
-```
-
-```{r}
-# calculate percentage of population that is aged 20-24
-combined_data <- combined_data %>%
-  mutate(percentage_20_24 = ((estimate.y + estimate) / estimate.x) * 100)
-head(combined_data)
-```
 
 
 ```{r}
 # step 3
-combined_data_sf <- st_as_sf(combined_data, sf_column_name = "geometry")
-
-# selecting only necessary columns for the new dataframe
-tract_level <- combined_data_sf %>%
-  select(GEOID, NAME, total_population = estimate.x, male_20_24 = estimate.y, female_20_24 = estimate, percentage_20_24) %>%
-  
+tract_level <- pop_data %>%
+  select(GEOID, NAME, total_pop, pop_20_24, percentage_20_24, geometry) %>%
   # removing empty geometries to avoid problems when mapping
   filter(!st_is_empty(geometry))
 ```
@@ -157,27 +127,21 @@ tract_level <- combined_data_sf %>%
 # step 4
 # read in the boundary file provided
 chicago_boundary <- st_read("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Labs/Lab8/boundaries_chicago.geojson")
-```
-```{r}
 # making sure that CRS matches (CRS = 4326) for both datasets
 tract_level <- st_transform(tract_level, crs = 4326)
 chicago_boundary <- st_transform(chicago_boundary, crs = 4326)
 
 # intersect the two spatial dataframes
 chicago_tracts <- st_intersection(tract_level, chicago_boundary)
-
 # double checking that no empty geometries after intersection to avoid problems when mapping
 chicago_tracts <- chicago_tracts[!st_is_empty(chicago_tracts), , drop = FALSE]
-```
-
-```{r}
-
 # mapping the percentage of 20-24 year olds in each Chicago census tract in blue
 data.table(chicago_tracts)
 tm_shape(chicago_tracts) +
   tm_polygons(col = "percentage_20_24", 
               palette = "-Blues", 
-              title = "Percentage of 20-24 Year Olds") +
+              title = "Percentage of 20-24 Year Olds",
+              style = "jenks") +
   tm_layout(main.title = "Percentage of Young Adults (20-24) in the Chicago area") + 
   tm_borders(alpha = 0.5)
 ```
@@ -186,15 +150,13 @@ tm_shape(chicago_tracts) +
 ```{r}
 # step 5
 zcta_data <- get_acs(geography = 'zcta', 
-                     variables = c(total_pop = "B01001_001", 
-                                   male_20_24 = "B01001_008",
-                                   female_20_24 = "B01001_043"),
+                     variables = c("B01001_001", "B01001_008"),
                      year = 2020, 
                      geometry = TRUE) %>%
-  select(GEOID, NAME, variable, estimate) %>%
+  select(GEOID, NAME, estimate, variable) %>%
   pivot_wider(names_from = variable, values_from = estimate) %>%
-  mutate(percentage_20_24 = (male_20_24 + female_20_24) / total_pop * 100) %>%
-  select(GEOID, NAME, total_pop, male_20_24, female_20_24, percentage_20_24, geometry)
+  mutate(percentage_20_24 = B01001_008 / B01001_001 * 100) %>%
+  select(GEOID, NAME, total_pop = B01001_001, population_20_24 = B01001_008, percentage_20_24, geometry)
 
 head(zcta_data)
 ```
@@ -204,18 +166,16 @@ head(zcta_data)
 # step 6
 chicago_boundary_zip <- st_read("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Labs/Lab8/boundaries_chicago.geojson") %>%
   st_transform(4326)
-
 zcta_data_wide <- st_transform(zcta_data, 4326)
 
 intersected_data <- st_intersection(zcta_data_wide, chicago_boundary_zip)
-
 intersected_data <- intersected_data[!st_is_empty(intersected_data), ]
 
 intersected_data <- intersected_data %>%
   mutate(percentage_20_24 = ifelse(is.nan(percentage_20_24), NA, percentage_20_24))
 
 tm_shape(intersected_data) +
-  tm_polygons("percentage_20_24", palette="-Blues", title="Percentage of 20-24 Year Olds") +
+  tm_polygons("percentage_20_24", palette="-Blues", title="Percentage of 20-24 Year Olds", style = "jenks") +
   tm_layout(main.title="Chicago: Percentage of 20-24 Year Olds by ZIP Code",
             main.title.position="center",
             frame=FALSE)
