@@ -58,200 +58,235 @@ library(whitebox)
 ```
 
 ```{r environment-setup, warning=FALSE, message=FALSE}
+
+# Area of interest -> missouri river area
 # Set working directory to location of DEM.tif file
 my_directory <- "/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Labs/Lab9"
 setwd(my_directory)
 
-# Read the DEM
+# Read the dem
 dem = rast("dem.tif")
 
-# Set the CRS of the DEM to WGS 84 / UTM zone 15N
-crs(dem) <- "EPSG:32615"
+crs(dem)
 
-# Visualize the DEM
 tmap_mode("view")
-if (ncol(dem) < 1000 & nrow(dem) < 1000) {
-  tm_shape(dem) +
-    tm_raster(style = "cont", palette = "PuOr", legend.show = TRUE) +
+
+
+if (ncol(dem)<1000 & nrow(dem)<1000)
+{
+  tm_shape(dem)+
+    tm_raster(style = "cont", palette = "PuOr", legend.show = TRUE)+
     tm_scale_bar()
 } else {
-  tm_shape(aggregate(dem, 10), raster.downsample = TRUE) +
-    tm_raster(style = "cont", palette = "PuOr", legend.show = TRUE) +
+  tm_shape(aggregate(dem, 10), raster.downsample = TRUE)+
+    tm_raster(style = "cont", palette = "PuOr", legend.show = TRUE)+
     tm_scale_bar()
 }
 
-# Generate hillshade
-wbt_hillshade(dem = paste0(my_directory, "/dem.tif"), output = paste0(my_directory, "/hillshade.tif"), azimuth = 300)
-hillshade = raster("hillshade.tif")
+## map hillshade
+wbt_hillshade(dem = paste0(my_directory, "/dem.tif"),  output = paste0(my_directory, "/hillshade.tif"), azimuth = 300) 
+#Read the produced hillshade 
+hillshade = raster("hillshade.tif") 
 
 # Map the hillshade
-if (ncol(hillshade) < 1000 & nrow(hillshade) < 1000) {
-  tm_shape(hillshade) +
-    tm_raster(style = "cont", palette = "-Greys", legend.show = FALSE) +
+if (ncol(hillshade)<1000 & nrow(hillshade)<1000)
+{
+  tm_shape(hillshade)+
+    tm_raster(style = "cont",palette = "-Greys", legend.show = FALSE)+
     tm_scale_bar()
 } else {
-  tm_shape(aggregate(hillshade, 10), raster.downsample = TRUE) +
-    tm_raster(style = "cont", palette = "-Greys", legend.show = FALSE) +
+  tm_shape(aggregate(hillshade, 10), raster.downsample = TRUE)+
+    tm_raster(style = "cont",palette = "-Greys", legend.show = FALSE)+
     tm_scale_bar()
 }
 
-# Fill and breach the DEM
-wbt_fill_single_cell_pits(dem = paste0(my_directory, "/dem.tif"), output = paste0(my_directory, "/dem_filled.tif"))
-wbt_breach_depressions_least_cost(dem = paste0(my_directory, "/dem_filled.tif"), output = paste0(my_directory, "/dem_breached.tif"), dist = 5, fill = TRUE)
-wbt_fill_depressions_wang_and_liu(dem = paste0(my_directory, "/dem_breached.tif"), output = paste0(my_directory, "/dem_filled_breached.tif"))
-
-# Read the smoothed DEM
-dem = rast("dem_filled_breached.tif")
-
-# Map the DEM
-if (ncol(dem) < 1000 & nrow(dem) < 1000) {
-  tm_shape(dem) +
-    tm_raster(style = "cont", palette = "PuOr", legend.show = TRUE) +
-    tm_scale_bar()
-} else {
-  tm_shape(aggregate(dem, 10), raster.downsample = TRUE) +
-    tm_raster(style = "cont", palette = "PuOr", legend.show = TRUE) +
-    tm_scale_bar()
-}
-
-# Generate flow accumulation and flow direction maps
-wbt_d8_flow_accumulation(input = paste0(my_directory, "/dem_filled_breached.tif"), output = paste0(my_directory, "/D8FA.tif"))
-wbt_d8_flow_accumulation_lyr = rast("D8FA.tif")
-
-# Visualize the flow accumulation map
-if (ncol(wbt_d8_flow_accumulation_lyr) < 1000 & nrow(wbt_d8_flow_accumulation_lyr) < 1000) {
-  tm_shape(wbt_d8_flow_accumulation_lyr) +
-    tm_raster(style = "quantile", legend.show = TRUE) +
-    tm_scale_bar()
-} else {
-  tm_shape(aggregate(wbt_d8_flow_accumulation_lyr, 10), raster.downsample = TRUE) +
-    tm_raster(style = "quantile", legend.show = TRUE) +
-    tm_scale_bar()
-}
-
-# Generate the flow direction (pointer) map
-wbt_d8_pointer(dem = paste0(my_directory, "/dem_filled_breached.tif"), output = paste0(my_directory, "/D8pointer.tif"))
-wbt_d8_pointer_lyr = rast("D8pointer.tif")
-
-# Visualize the flow direction map
-if (ncol(wbt_d8_pointer_lyr) < 1000 & nrow(wbt_d8_pointer_lyr) < 1000) {
-  tm_shape(wbt_d8_pointer_lyr) +
-    tm_raster(style = "cont", legend.show = TRUE) +
-    tm_scale_bar()
-} else {
-  tm_shape(aggregate(wbt_d8_pointer_lyr, 10, fun = modal), raster.downsample = TRUE) +
-    tm_raster(style = "cont", legend.show = TRUE) +
-    tm_scale_bar()
-}
-
-# Set pour points
-ppoints <- tribble(
-  ~Lon, ~Lat,
-  -91.984427, 40.718717,
-  -91.384747, 40.591037,
+## Prepare DEM for Hydrology Analyses
+#fill the DEM
+wbt_fill_single_cell_pits(dem = paste0(my_directory, "/dem.tif"),  output = paste0(my_directory, "/dem_filled.tif"))
+wbt_breach_depressions_least_cost(
+  dem = paste0(my_directory, "/dem_filled.tif"),
+  output = paste0(my_directory, "/dem_breached.tif"),
+  dist = 5,
+  fill = TRUE) 
+wbt_fill_depressions_wang_and_liu(
+  dem = paste0(my_directory, "/dem_breached.tif"),
+  output = paste0(my_directory, "/dem_filled_breached.tif"),
 )
 
-# Create dataframe with pour points
-ppointsSP <- SpatialPoints(ppoints, proj4string = CRS("+proj=longlat +datum=WGS84"))
+#Read the smoothed dem
+dem = rast("dem_filled_breached.tif") 
 
-# Convert data frame to shapefile and write the shapefile to our data directory
+#Map the DEM
+if (ncol(dem)<1000 & nrow(dem)<1000)
+{
+  tm_shape(dem)+
+    tm_raster(style = "cont", palette = "PuOr", legend.show = TRUE)+
+    tm_scale_bar()
+} else {
+  tm_shape(aggregate(dem, 10), raster.downsample = TRUE)+
+    tm_raster(style = "cont", palette = "PuOr", legend.show = TRUE)+
+    tm_scale_bar()
+}
+
+## Create flow accumulation and pointer grids (flow direction)
+#Generate the flow accumulation map. Make sure to use the filled DEM "dem_filled_breached.tif"!!
+wbt_d8_flow_accumulation(input = paste0(my_directory, "/dem_filled_breached.tif"), output = paste0(my_directory, "/D8FA.tif"))
+#Read the produced flow accumulation file
+wbt_d8_flow_accumulation_lyr = rast("D8FA.tif") 
+
+#Visualize the flow accumulation map
+if (ncol(wbt_d8_flow_accumulation_lyr)<1000 & nrow(wbt_d8_flow_accumulation_lyr)<1000)
+{
+  tm_shape(wbt_d8_flow_accumulation_lyr)+
+    tm_raster(style = "quantile", legend.show = TRUE)+ #Fisher or quantile classification method is used to enhance visualization for flow accumulation (distribution dominated by small values)
+    tm_scale_bar()
+} else {
+  tm_shape(aggregate(wbt_d8_flow_accumulation_lyr, 10), raster.downsample = TRUE)+
+    tm_raster(style = "quantile", legend.show = TRUE)+ #Fisher or quantile classification method is used to enhance visualization for flow accumulation (distribution dominated by small values)
+    tm_scale_bar()
+}
+
+#Generate the flow direction (pointer) map
+wbt_d8_pointer(dem = paste0(my_directory, "/dem_filled_breached.tif"), output = paste0(my_directory, "/D8pointer.tif"))
+
+#Read the produced flow direction file
+wbt_d8_pointer_lyr = rast("D8pointer.tif")
+
+#Visualize the flow direction map
+if (ncol(wbt_d8_pointer_lyr)<1000 & nrow(wbt_d8_pointer_lyr)<1000)
+{
+  tm_shape(wbt_d8_pointer_lyr)+
+    tm_raster(style = "cont", legend.show = TRUE)+
+    tm_scale_bar()
+} else {
+  tm_shape(aggregate(wbt_d8_pointer_lyr, 10, fun = modal), raster.downsample = TRUE)+ #here modal function is used for aggregating the discrete D8 flow directions.
+    tm_raster(style = "cont", legend.show = TRUE)+
+    tm_scale_bar()
+}
+
+## Set pour points
+ppoints <- tribble(
+  ~Lon, ~Lat,
+  -92.5495, 38.2211,
+  -92.1952, 38.4127
+)
+
+#Create dataframe with pour points (make sure to set up the correct spatial coordinate system)
+ppointsSP <- SpatialPoints(ppoints, proj4string = CRS("+proj=longlat +datum=WGS84")) #
+
+#Convert data frame to shapefile and write the shapefile to our data directory
 shapefile(ppointsSP, filename = "pourpoints.shp", overwrite = TRUE)
 
-# Read the shapefile
+#Read the shapefile
 ppointsSP_gcs = st_read("pourpoints.shp")
 
-# Transform the spatial coordinate system of the pour point shapefile to the same one used by the filled DEM
-st_crs(dem)
-ppointsSP_prj = st_transform(ppointsSP_gcs, crs = "EPSG:32615")
+st_crs(dem) #4326
+
+ppointsSP_prj = st_transform(ppointsSP_gcs, crs="EPSG:4326")
+
 st_write(ppointsSP_prj, "ppointsSP_prj.shp", layer_options = 'OVERWRITE=YES', update = TRUE)
 
-# Create a raster stream grid
-wbt_extract_streams(flow_accum = paste0(my_directory, "/D8FA.tif"), output = paste0(my_directory, "/raster_streams.tif"), threshold = 50)
+wbt_extract_streams(flow_accum = paste0(my_directory, "/D8FA.tif"),
+                    output = paste0(my_directory, "/raster_streams.tif"),
+                    threshold = 50)
 
-# Snap pour points to stream network
-wbt_jenson_snap_pour_points(pour_pts = paste0(my_directory, "/ppointsSP_prj.shp"), streams = paste0(my_directory, "/raster_streams.tif"), output = paste0(my_directory, "/snappedpp.shp"), snap_dist = 150)
+wbt_jenson_snap_pour_points(
+  pour_pts = paste0(my_directory, "/ppointsSP_prj.shp"),
+  streams = paste0(my_directory, "/raster_streams.tif"),
+  output = paste0(my_directory, "/snappedpp.shp"),
+  snap_dist = 10
+)
 
 # Read the produced files
-streams <- raster("raster_streams.tif")
-pp = shapefile("snappedpp.shp")
+streams <- raster("raster_streams.tif") # Read the generated stream network
+pp <- shapefile("snappedpp.shp") # Read the snapped pour points
 
-# Visualize the pour points before and after being snapped to the network
-if (ncol(streams) < 1000 & nrow(streams) < 1000) {
-  tm_shape(streams) +
-    tm_raster(legend.show = TRUE, palette = "Blues") +
-    tm_shape(ppointsSP_prj) +
+#Visualize the pour points BEFORE being snapped to the network. 
+if (ncol(streams)<1000 & nrow(streams)<1000)
+{
+  tm_shape(streams)+
+    tm_raster(legend.show = TRUE, palette = "Blues")+
+    tm_shape(ppointsSP_prj)+
     tm_dots(col = "red")
 } else {
-  tm_shape(aggregate(streams, 10, fun = max), raster.downsample = TRUE) +
-    tm_raster(legend.show = TRUE, palette = "Blues") +
-    tm_shape(ppointsSP_prj) +
+  tm_shape(aggregate(streams, 10, fun = max), raster.downsample = TRUE)+ #downsample function set to be MAX to improve continuity of the stream network. 
+    tm_raster(legend.show = TRUE, palette = "Blues")+
+    tm_shape(ppointsSP_prj)+
     tm_dots(col = "red")
 }
 
-if (ncol(streams) < 1000 & nrow(streams) < 1000) {
-  tm_shape(streams) +
-    tm_raster(legend.show = TRUE, palette = "Blues") +
-    tm_shape(pp) +
+#Visualize the pour points AFTER being snapped to the network. 
+if (ncol(streams)<1000 & nrow(streams)<1000)
+{
+  tm_shape(streams)+
+    tm_raster(legend.show = TRUE, palette = "Blues")+
+    tm_shape(pp)+
     tm_dots(col = "red")
 } else {
-  tm_shape(aggregate(streams, 10, fun = max), raster.downsample = TRUE) +
-    tm_raster(legend.show = TRUE, palette = "Blues") +
-    tm_shape(pp) +
+  tm_shape(aggregate(streams, 10, fun = max), raster.downsample = TRUE)+ #downsample function set to be MAX to improve continuity of the stream network. 
+    tm_raster(legend.show = TRUE, palette = "Blues")+
+    tm_shape(pp)+
     tm_dots(col = "red")
 }
 
-# Delineate watersheds
-wbt_watershed(d8_pntr = paste0(my_directory, "/D8pointer.tif"), pour_pts = paste0(my_directory, "/snappedpp.shp"), output = paste0(my_directory, "/watersheds.tif"))
-ws = raster("watersheds.tif")
+## Delineate watersheds
+wbt_watershed(d8_pntr = paste0(my_directory,"/D8pointer.tif"),
+              pour_pts = paste0(my_directory,"/snappedpp.shp"),
+              output = paste0(my_directory,"/watersheds.tif"))
+#Read the produced watershed file
+ws = raster("watersheds.tif") #Read the watershed raster file
 
-# Visualize the watersheds
-if (ncol(hillshade) < 1000 & nrow(hillshade) < 1000) {
-  tm_shape(hillshade) +
-    tm_raster(style = "cont", palette = "-Greys", legend.show = FALSE) +
-    tm_shape(ws) +
-    tm_raster(legend.show = TRUE, alpha = 0.5, style = "cat") +
-    tm_shape(pp) +
+#Visualize the watersheds
+if (ncol(hillshade)<1000 & nrow(hillshade)<1000)
+{
+  tm_shape(hillshade)+
+    tm_raster(style = "cont",palette = "-Greys", legend.show = FALSE)+
+    tm_shape(ws)+
+    tm_raster(legend.show = TRUE, alpha = 0.5, style = "cat")+
+    tm_shape(pp)+
     tm_dots(col = "red")
 } else {
-  tm_shape(aggregate(hillshade, 10), raster.downsample = TRUE) +
-    tm_raster(style = "cont", palette = "-Greys", legend.show = FALSE) +
-    tm_shape(aggregate(ws, 10, fun = max), raster.downsample = TRUE) +
-    tm_raster(legend.show = TRUE, alpha = 0.5, style = "cat") +
-    tm_shape(pp) +
+  tm_shape(aggregate(hillshade, 10), raster.downsample = TRUE)+
+    tm_raster(style = "cont",palette = "-Greys", legend.show = FALSE)+
+    tm_shape(aggregate(ws, 10, fun = max), raster.downsample = TRUE)+
+    tm_raster(legend.show = TRUE, alpha = 0.5, style = "cat")+
+    tm_shape(pp)+
     tm_dots(col = "red")
 }
 
-# Convert watersheds to shapefiles
-freq(ws)
+## Convert watersheds to shapefiles
+#Convert watershed to shapefile
 wsshape = st_as_stars(ws) %>% st_as_sf(merge = T)
 wsshape
-wsshape_dissolved <- wsshape %>%
-  group_by(watersheds) %>%
+
+wsshape_dissolved <- wsshape %>% 
+  group_by(watersheds) %>% 
   summarise()
 
 st_write(wsshape_dissolved, 'watersheds_shape.shp', layer_options = 'OVERWRITE=YES', update = TRUE)
 
-# Visualize the vectorized watersheds
-if (ncol(hillshade) < 1000 & nrow(hillshade) < 1000) {
-  tm_shape(hillshade) +
-    tm_raster(style = "cont", palette = "-Greys", legend.show = FALSE) +
-    tm_shape(wsshape_dissolved) +
+#Visualize the vectorized watersheds
+if (ncol(hillshade)<1000 & nrow(hillshade)<1000)
+{
+  tm_shape(hillshade)+
+    tm_raster(style = "cont",palette = "-Greys", legend.show = FALSE)+
+    tm_shape(wsshape_dissolved)+
     tm_borders(col = "red")
 } else {
-  tm_shape(aggregate(hillshade, 10), raster.downsample = TRUE) +
-    tm_raster(style = "cont", palette = "-Greys", legend.show = FALSE) +
-    tm_shape(wsshape_dissolved) +
+  tm_shape(aggregate(hillshade, 10), raster.downsample = TRUE)+
+    tm_raster(style = "cont",palette = "-Greys", legend.show = FALSE)+
+    tm_shape(wsshape_dissolved)+
     tm_borders(col = "red")
 }
 
-# Extract and analyze data based on watershed boundaries
+#Extract DEM pixels within each watershed
 wsElevs <- extract(dem, wsshape_dissolved)
 
-WS1 = filter(wsElevs, ID == 1)
-WS2 = filter(wsElevs, ID == 2)
+WS1 = filter(wsElevs, ID == 1) #Pixels in watershed 1
+WS2 = filter(wsElevs, ID == 2) #Pixels in watershed 2
 
 ggplot() +
-  geom_density(as_tibble(WS1[,2]), mapping = aes(value, color = "WS1")) +
-  geom_density(as_tibble(WS2[,2]), mapping = aes(value, color = "WS2")) +
+  geom_density(as_tibble(WS1[,2]), mapping = aes(value, color = "WS1"))+
+  geom_density(as_tibble(WS2[,2]), mapping = aes(value, color = "WS2"))+
   xlab("Elevation (meters above sea level)")
 ```
