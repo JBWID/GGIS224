@@ -160,17 +160,21 @@ counties.3435$county_area <- st_area(counties.3435)
 ```
 # Q1: 
 What is the unit of the calculated county area?
-Answer: the unit is square meters because the st_area() returns area values in square meters by default even though hte CRS used has units in US survey feet, the st_area() function still returns the area in square meters.
+Answer: the unit of the county area is in US survey feet squared (ft^2) based on the CRS.
 
 # Q2: 
 Make a choropleth map showing the density of emission facilities (i.e., the count of emission points per square mile) by county. 
 ```{r q2 ans}
-counties.3435$density <- counties.3435$TotEmisFac / (as.numeric(counties.3435$county_area) / 27878400)
+# number of square feet in one square mile.
+conversion_factor <- 27878400 
+
+counties.3435$density <- counties.3435$TotEmisFac / (as.numeric(counties.3435$county_area) / conversion_factor)
 
 tm_shape(il) + tm_borders(lwd = 2) +  
   tm_shape(counties.3435) + tm_polygons(col = "density", n=10,                                    
-                                    style = "jenks", title = "Facility Density (per sq mile)") +
+                                        style = "jenks", title = "Facility Density (per sq mile)") +
   tm_layout(frame = FALSE, legend.outside = TRUE)
+
 ```
 
 ```{r CALCULATE FACILITY EMISSION AVERAGE BY COUNTY}
