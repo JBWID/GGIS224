@@ -1,0 +1,6 @@
+﻿Country Code;City;Location;Coordinates;Pollutant;Source Name;Unit;Value;Last Updated;Country Label
+ID;;US Diplomatic Post: Jakarta South;-6.236585, 106.793335;PM2.5;StateAir_JakartaSouth;µg/m³;28.4;2016-11-09T10:00:00-06:00;Indonesia
+ID;Jakarta;US Diplomatic Post: Jakarta South;-6.236704, 106.79324;PM2.5;StateAir_JakartaSouth;µg/m³;28.0;2024-04-14T03:00:00-05:00;Indonesia
+ID;Jakarta;US Diplomatic Post: Jakarta Central;-6.182536, 106.834236;PM2.5;StateAir_JakartaCentral;µg/m³;-999.0;2024-04-14T03:00:00-05:00;Indonesia
+ID;Jakarta;US Diplomatic Post: Jakarta Central;-6.182536, 106.834236;O3;StateAir_JakartaCentral;ppm;-0.999;2024-04-14T03:00:00-05:00;Indonesia
+ID;;US Diplomatic Post: Jakarta Central;-6.182382, 106.834094;PM2.5;StateAir_JakartaCentral;µg/m³;-999.0;2016-11-09T10:00:00-06:00;Indonesia
