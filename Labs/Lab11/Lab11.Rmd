@@ -35,7 +35,7 @@ library(tmap) #modern data visualizations
 library(leaflet) #modern data visualizations
 
 # Define your working directory
-setwd("C:/Users/emmach3/Desktop/GGIS224/Lab11")
+setwd("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Labs/Lab11")
 ```
 
 
@@ -176,6 +176,41 @@ Now it is your turn. Try to krige the temperature values (this time, in Celsius 
 Hint: to fit the semivariogram by an exponential model, change the argument of model in fit.variogram to "Exp". 
 Also see more: https://search.r-project.org/CRAN/refmans/gstat/html/fit.variogram.html. 
 ```{r code chunk for kriging temperature in C using an exponential model}
-#Write your code chunk below
+# semivariogram fitting using the exponential model
+tmp.vgm <- variogram(node.temps$avg_temp ~ 1, node.temps) 
+tmp.fit.exp <- fit.variogram(tmp.vgm, model=vgm("Exp"))
+plot(tmp.vgm, tmp.fit.exp)
+
+# generating the grid
+chi.grid <- pt2grid(chiCA,100)
+
+# preparing the data for kriging analysis
+projection(chi.grid) <- crs("+init=epsg:4326")  
+projection(node.temps) <-  crs("+init=epsg:4326")
+projection(chiCA) <- crs("+init=epsg:4326")
+
+# krige the data using the exponential model
+temp.kriged <- krige(node.temps$avg_temp ~ 1, node.temps, chi.grid, model = tmp.fit.exp)
+
+# Converting the data to to SpatRaster and SpatVector
+chiCA.spat <- terra::vect(chiCA)
+temp.kriged.spat <- terra::rast(temp.kriged)
+chi.temp.kriged <- terra::crop(temp.kriged.spat, chiCA.spat, mask=TRUE)
+
+# mapping the kriged predicted surface using the view mode
+tmap_mode("view")
+tm_shape(chiCA) + tm_borders() + 
+  tm_shape(node.temps) + tm_dots(size=0.01) +
+  tm_shape(chi.temp.kriged$var1.pred) + tm_raster("var1.pred", style = "jenks", 
+            title = "Temperature (C)", palette = "BuPu") +
+  tm_legend(position = c("left", "bottom"))
+
+# mapping the kriging variance also using the view mode
+tmap_mode("view") 
+tm_shape(chiCA) + tm_borders() +
+  tm_shape(node.temps) + tm_dots(size=0.01) + 
+  tm_shape(chi.temp.kriged$var1.var) + tm_raster("var1.var", style = "jenks",
+            title = "Kriging Variance", palette = "Reds") +
+  tm_legend(position = c("left", "bottom"))
 ```
 .
