@@ -9,22 +9,100 @@ date: "2024-04-30"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Libraries
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r libraries}
+library(dplyr)
+library(sf)
+library(spData)
+library(tidyverse)
+library(terra)
+library(rgeoda)
+library(tmap)
+library(raster)
+library(tidycensus)
 ```
 
-## Including Plots
+## Data Wrangling
 
-You can also embed plots, for example:
+```{r loading datasets}
+# Load required libraries
+library(sf)
+library(dplyr)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+# Load datasets
+mobility_data <- read.csv("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Final Project/Datasets/mobility-data.csv")
+air_quality_data <- read.csv("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Final Project/Datasets/airquality-data.csv")
+
+# Data wrangling
+# Convert date column to date format
+mobility_data$date <- as.Date(mobility_data$date)
+air_quality_data$tanggal <- as.Date(air_quality_data$tanggal)
+
+# Cleaning mobility dataset
+jakarta_mobility <- subset(mobility_data, sub_region_1 == "Jakarta",
+                           select = -c(country_region_code, sub_region_2, metro_area, iso_3166_2_code, census_fips_code))
+
+# Converting air station location to coordinates
+air_quality_stations <- data.frame(
+  lokasi_spku = c("DKI1", "DKI2", "DKI3", "DKI4", "DKI5"),
+  latitude = c(-6.208821, -6.189126, -6.272446, -6.229933, -6.162014),
+  longitude = c(106.845329, 106.844877, 106.868048, 106.891464, 106.791945)
+)
+
+air_quality_stations_sf <- st_as_sf(air_quality_stations, coords = c("longitude", "latitude"), crs = 4326)
+
+jakarta_mobility_sf <- jakarta_mobility %>%
+  mutate(
+    latitude = as.numeric(sapply(place_id, function(x) unlist(strsplit(strsplit(x, ",")[[1]][2], ":"))[2])),
+    longitude = as.numeric(sapply(place_id, function(x) unlist(strsplit(strsplit(x, ",")[[1]][1], ":"))[2]))
+  ) %>%
+  filter(!is.na(latitude) & !is.na(longitude)) %>%  # Remove rows with missing coordinates
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
+
+# converting mobility datasets to coordinates for analysis
+library(httr)
+library(jsonlite)
+
+# Replace 'YOUR_API_KEY' with your actual Google Places API key
+api_key <- 'YOUR_API_KEY'
+
+# Function to retrieve latitude and longitude for a place_id (TODOOOOOOOOOOO)
+get_coordinates <- function(place_id) {
+  url <- paste0('https://maps.googleapis.com/maps/api/place/details/json?place_id=', place_id, '&key=', api_key)
+  response <- GET(url)
+  
+  if (status_code(response) == 200) {
+    result <- fromJSON(content(response, 'text'))
+    
+    if (result$status == 'OK') {
+      lat <- result$result$geometry$location$lat
+      lng <- result$result$geometry$location$lng
+      return(c(lat, lng))
+    } else {
+      return(c(NA, NA))
+    }
+  } else {
+    return(c(NA, NA))
+  }
+}
+
+# Example usage
+place_id <- "ChIJnUvjRenzaS4RILjULejFAAE"
+coordinates <- get_coordinates(place_id)
+print(coordinates)
+
+# Find the nearest air quality station for each mobility data point
+nearest_station <- st_nearest_feature(jakarta_mobility_sf, air_quality_stations_sf)
+jakarta_mobility_sf$nearest_station <- air_quality_stations$lokasi_spku[nearest_station]
+
+# Merge datasets based on date and nearest station
+merged_data <- jakarta_mobility_sf %>%
+  left_join(air_quality_data, by = c("date" = "tanggal", "nearest_station" = "lokasi_spku"))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Exploratory Data Analysis (EDA)
+``` {r eda}
+summary(merged_data)
+unique(jakarta_mobility$place_id)
+```
