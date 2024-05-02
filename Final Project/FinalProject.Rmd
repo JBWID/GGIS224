@@ -25,94 +25,24 @@ library(tidycensus)
 library(httr)
 library(jsonlite)
 library(ggplot2)
+library(tmap)
 ```
 
-## Data Wrangling
+## Data Wrangling for Crime Dataset
+``` {r mapping}
+# Loading Dataset
+crime_data <- read.csv("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Final Project/Datasets/Crimes_-_Map.csv")
+
+
+```
+
+## Data Wrangling for Crime Dataset
 
 ```{r loading datasets}
-# Load datasets
-mobility_data <- read.csv("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Final Project/Datasets/mobility-data.csv")
-air_quality_data <- read.csv("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Final Project/Datasets/airquality-data.csv")
 
-# Data wrangling
-# Convert date column to date format
-mobility_data$date <- as.Date(mobility_data$date)
-air_quality_data$tanggal <- as.Date(air_quality_data$tanggal)
-
-# Cleaning mobility dataset
-jakarta_mobility <- subset(mobility_data, sub_region_1 == "Jakarta",
-                           select = -c(country_region_code, sub_region_2, metro_area, iso_3166_2_code, census_fips_code))
-
-# Converting air station location to coordinates
-air_quality_stations <- data.frame(
-  lokasi_spku = c("DKI1", "DKI2", "DKI3", "DKI4", "DKI5"),
-  latitude = c(-6.208821, -6.189126, -6.272446, -6.229933, -6.162014),
-  longitude = c(106.845329, 106.844877, 106.868048, 106.891464, 106.791945)
-)
-air_quality_stations_sf <- st_as_sf(air_quality_stations, coords = c("longitude", "latitude"), crs = 4326)
-
-# Converting mobility datasets to coordinates for analysis
-
-# Replace 'YOUR_API_KEY' with your actual Google Places API key
-api_key <- 'AIzaSyDQZeOwRzmHoZuELGlhE_5GqBRQL-jq5Rc'
-
-# Function to retrieve latitude and longitude for a place_id
-get_coordinates <- function(place_id) {
-  url <- paste0('https://maps.googleapis.com/maps/api/place/details/json?place_id=', place_id, '&key=', api_key)
-  response <- GET(url)
-  if (status_code(response) == 200) {
-    result <- fromJSON(content(response, 'text'))
-    if (result$status == 'OK') {
-      lat <- result$result$geometry$location$lat
-      lng <- result$result$geometry$location$lng
-      return(c(lat, lng))
-    } else {
-      return(c(NA, NA))
-    }
-  } else {
-    return(c(NA, NA))
-  }
-}
-
-# Retrieve coordinates for each place_id in the mobility dataset
-jakarta_mobility_sf <- jakarta_mobility %>%
-  mutate(
-    latitude = sapply(place_id, function(x) get_coordinates(x)[1]),
-    longitude = sapply(place_id, function(x) get_coordinates(x)[2])
-  ) %>%
-  filter(!is.na(latitude) & !is.na(longitude)) %>%
-  st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
-
-# Find the nearest air quality station for each mobility data point within a 50km radius
-jakarta_mobility_sf$nearest_station <- st_nearest_feature(jakarta_mobility_sf, air_quality_stations_sf, maxdist = 50000)
-jakarta_mobility_sf$nearest_station <- air_quality_stations$lokasi_spku[jakarta_mobility_sf$nearest_station]
-
-# Merge datasets based on date and nearest station
-merged_data <- jakarta_mobility_sf %>%
-  left_join(air_quality_data, by = c("date" = "tanggal", "nearest_station" = "lokasi_spku"))
 ```
 
-## Exploratory Data Analysis (EDA)
+## Joining the 2 datasets
 ``` {r eda}
-# Read the shapefile for Indonesia
-indonesia_shapefile <- st_read("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Final Project/Datasets/shapefile.shp")
 
-# Plot the map of Indonesia
-plot_map <- ggplot() +
-  geom_sf(data = indonesia_shapefile, fill = "lightgray", color = "black") +
-  theme_minimal() +
-  labs(title = "Data Points on Indonesia Map")
-
-# Plot the air quality stations
-plot_map <- plot_map +
-  geom_sf(data = air_quality_stations_sf, color = "red", size = 2) +
-  labs(subtitle = "Air Quality Stations")
-
-# Plot the mobility data points
-plot_map <- plot_map +
-  geom_sf(data = jakarta_mobility_sf, color = "blue", alpha = 0.5, size = 1) +
-  labs(subtitle = "Mobility Data Points")
-
-# Display the plot
-plot_map
 ```
