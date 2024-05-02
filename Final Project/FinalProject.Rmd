@@ -25,7 +25,6 @@ library(tidycensus)
 library(httr)
 library(jsonlite)
 library(ggplot2)
-library(tmap)
 ```
 
 ## Data Wrangling for Crime Dataset
@@ -33,12 +32,142 @@ library(tmap)
 # Loading Dataset
 crime_data <- read.csv("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Final Project/Datasets/Crimes_-_Map.csv")
 
+# Remove unecessary columns
+crime_data_filtered <- crime_data[, c("BLOCK", "X.COORDINATE", "Y.COORDINATE", "LATITUDE", "LONGITUDE", "LOCATION")]
 
+crime_count <- aggregate(BLOCK ~ LOCATION, data = crime_data_filtered, FUN = length)
+
+colnames(crime_count) <- c("LOCATION", "CRIME_COUNT")
+
+crime_data_result <- merge(crime_data_filtered[, !names(crime_data_filtered) %in% "BLOCK"], crime_count, by = "LOCATION", all.x = TRUE)
+
+crime_data_result <- crime_data_result[!duplicated(crime_data_result$LOCATION), ]
+
+# Load the census tract shapefile
+census_tracts <- st_read("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Final Project/Datasets/Boundaries - Census Tracts - 2010.geojson")
+
+# Remove rows with missing coordinates
+crime_data_result <- crime_data_result %>%
+  filter(!is.na(LONGITUDE) & !is.na(LATITUDE))
+
+# Convert the crime data to an sf object
+crime_data_sf <- st_as_sf(crime_data_result, coords = c("LONGITUDE", "LATITUDE"), crs = 4326)
+
+# Spatial join the crime data with the census tracts
+crime_data_tract <- st_join(census_tracts, crime_data_sf)
+
+# Aggregate the crime count by census tract
+crime_data_tract_agg <- crime_data_tract %>%
+  group_by(geoid10) %>%
+  summarize(CRIME_COUNT = sum(CRIME_COUNT, na.rm = TRUE))
+
+# Convert the aggregated crime data to an sf object
+crime_data_tract_agg_sf <- st_as_sf(crime_data_tract_agg, coords = c("LONGITUDE", "LATITUDE"), crs = 4326)
+
+# Merge the census tract shapefile with the aggregated crime data
+census_tracts_crime <- st_join(census_tracts, crime_data_tract_agg_sf, join = st_intersects, left = TRUE)
+
+# Define the breaks for the crime count intervals
+breaks <- c(0, 50, 100, 200, 300, 400, 500, 1000, 2000, 3000, 4000, 5000, Inf)
+
+# Define the labels for the crime count intervals
+labels <- c("0-50", "50-100", "100-200", "200-300", "300-400", "400-500",
+            "500-1000", "1000-2000", "2000-3000", "3000-4000", "4000-5000", "5000+")
+
+# Create an interactive heatmap using tmap
+tmap_mode("view")
+tm_shape(census_tracts_crime) +
+  tm_polygons("CRIME_COUNT", title = "Crime Count", breaks = breaks, labels = labels,
+              palette = "YlOrRd", alpha = 0.7) +
+  tm_view(set.zoom.limits = c(10, 14)) +
+  tm_scale_bar() +
+  tm_minimap() +
+  tm_credits("Data Source: Chicago Crime Data", position = c("LEFT", "BOTTOM"))
 ```
 
 ## Data Wrangling for Crime Dataset
+```{r cleaning}
+# Load the economic dataset
+economic_data <- read.csv("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Final Project/Datasets/Chicago Health Atlas Data Download - Census Tracts.csv")
 
-```{r loading datasets}
+# Load the census tract shapefile
+census_tracts <- st_read("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Final Project/Datasets/Boundaries - Census Tracts - 2010.geojson")
+
+# Remove rows with missing coordinates
+economic_data <- economic_data %>%
+  filter(!is.na(Longitude) & !is.na(Latitude))
+
+# Convert the economic data to an sf object
+economic_data_sf <- st_as_sf(economic_data, coords = c("Longitude", "Latitude"), crs = 4326)
+
+# Merge the census tract shapefile with the economic data
+census_tracts_economic <- st_join(census_tracts, economic_data_sf, join = st_intersects, left = TRUE)
+
+# Define the breaks for the intervals
+breaks <- c(0, 5, 10, 15, 20, 25, 30, 35, 40, Inf)
+
+# Define the labels for the intervals
+labels <- c("0-5", "5-10", "10-15", "15-20", "20-25", "25-30", "30-35", "35-40", "40+")
+
+# Create an interactive heatmap using tmap for Unemployment Rate
+tmap_mode("view")
+tm_shape(census_tracts_economic) +
+  tm_polygons("UMP_2018.2022", title = "Unemployment Rate", breaks = breaks, labels = labels,
+              palette = "YlOrRd", alpha = 0.7) +
+  tm_view(set.zoom.limits = c(10, 14)) +
+  tm_scale_bar() +
+  tm_minimap() +
+  tm_credits("Data Source: Chicago Health Atlas", position = c("LEFT", "BOTTOM"))
+
+# Create an interactive heatmap using tmap for Education Index
+tmap_mode("view")
+tm_shape(census_tracts_economic) +
+  tm_polygons("EDX_2018.2022", title = "Education Index", breaks = breaks, labels = labels,
+              palette = "YlOrRd", alpha = 0.7) +
+  tm_view(set.zoom.limits = c(10, 14)) +
+  tm_scale_bar() +
+  tm_minimap() +
+  tm_credits("Data Source: Chicago Health Atlas", position = c("LEFT", "BOTTOM"))
+
+# Create an interactive heatmap using tmap for Housing Density Index
+tmap_mode("view")
+tm_shape(census_tracts_economic) +
+  tm_polygons("HDX_2018.2022", title = "Housing Density Index", breaks = breaks, labels = labels,
+              palette = "YlOrRd", alpha = 0.7) +
+  tm_view(set.zoom.limits = c(10, 14)) +
+  tm_scale_bar() +
+  tm_minimap() +
+  tm_credits("Data Source: Chicago Health Atlas", position = c("LEFT", "BOTTOM"))
+
+# Create an interactive heatmap using tmap for Income Index
+tmap_mode("view")
+tm_shape(census_tracts_economic) +
+  tm_polygons("INC_2018.2022", title = "Income Index", breaks = breaks, labels = labels,
+              palette = "YlOrRd", alpha = 0.7) +
+  tm_view(set.zoom.limits = c(10, 14)) +
+  tm_scale_bar() +
+  tm_minimap() +
+  tm_credits("Data Source: Chicago Health Atlas", position = c("LEFT", "BOTTOM"))
+
+# Create an interactive heatmap using tmap for Per Capita Income
+tmap_mode("view")
+tm_shape(census_tracts_economic) +
+  tm_polygons("PCI_2018.2022", title = "Per Capita Income", breaks = breaks, labels = labels,
+              palette = "YlOrRd", alpha = 0.7) +
+  tm_view(set.zoom.limits = c(10, 14)) +
+  tm_scale_bar() +
+  tm_minimap() +
+  tm_credits("Data Source: Chicago Health Atlas", position = c("LEFT", "BOTTOM"))
+
+# Create an interactive heatmap using tmap for Poverty Rate
+tmap_mode("view")
+tm_shape(census_tracts_economic) +
+  tm_polygons("POV_2018.2022", title = "Poverty Rate", breaks = breaks, labels = labels,
+              palette = "YlOrRd", alpha = 0.7) +
+  tm_view(set.zoom.limits = c(10, 14)) +
+  tm_scale_bar() +
+  tm_minimap() +
+  tm_credits("Data Source: Chicago Health Atlas", position = c("LEFT", "BOTTOM"))
 
 ```
 
