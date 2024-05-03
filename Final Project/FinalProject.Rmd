@@ -104,47 +104,23 @@ economic_data_sf <- st_as_sf(economic_data, coords = c("Longitude", "Latitude"),
 
 # Merge the census tract shapefile with the economic data
 census_tracts_economic <- st_join(census_tracts, economic_data_sf, join = st_intersects, left = TRUE)
+```
 
-# Define the breaks for the intervals
-breaks <- c(0, 5, 10, 15, 20, 25, 30, 35, 40, Inf)
-
-# Define the labels for the intervals
-labels <- c("0-5", "5-10", "10-15", "15-20", "20-25", "25-30", "30-35", "35-40", "40+")
-
+```{r maps}
 # Create an interactive heatmap using tmap for Unemployment Rate
 tmap_mode("view")
 tm_shape(census_tracts_economic) +
-  tm_polygons("UMP_2018.2022", title = "Unemployment Rate", breaks = breaks, labels = labels,
+  tm_polygons("UMP_2018.2022", title = "Unemployment Rate",
               palette = "YlOrRd", alpha = 0.7) +
   tm_view(set.zoom.limits = c(10, 14)) +
   tm_scale_bar() +
   tm_minimap() +
   tm_credits("Data Source: Chicago Health Atlas", position = c("LEFT", "BOTTOM"))
 
-# Create an interactive heatmap using tmap for Education Index
+# Create an interactive heatmap using tmap for Median Household Income
 tmap_mode("view")
 tm_shape(census_tracts_economic) +
-  tm_polygons("EDX_2018.2022", title = "Education Index", breaks = breaks, labels = labels,
-              palette = "YlOrRd", alpha = 0.7) +
-  tm_view(set.zoom.limits = c(10, 14)) +
-  tm_scale_bar() +
-  tm_minimap() +
-  tm_credits("Data Source: Chicago Health Atlas", position = c("LEFT", "BOTTOM"))
-
-# Create an interactive heatmap using tmap for Housing Density Index
-tmap_mode("view")
-tm_shape(census_tracts_economic) +
-  tm_polygons("HDX_2018.2022", title = "Housing Density Index", breaks = breaks, labels = labels,
-              palette = "YlOrRd", alpha = 0.7) +
-  tm_view(set.zoom.limits = c(10, 14)) +
-  tm_scale_bar() +
-  tm_minimap() +
-  tm_credits("Data Source: Chicago Health Atlas", position = c("LEFT", "BOTTOM"))
-
-# Create an interactive heatmap using tmap for Income Index
-tmap_mode("view")
-tm_shape(census_tracts_economic) +
-  tm_polygons("INC_2018.2022", title = "Income Index", breaks = breaks, labels = labels,
+  tm_polygons("INC_2018.2022", title = "Median Household Income",
               palette = "YlOrRd", alpha = 0.7) +
   tm_view(set.zoom.limits = c(10, 14)) +
   tm_scale_bar() +
@@ -154,7 +130,7 @@ tm_shape(census_tracts_economic) +
 # Create an interactive heatmap using tmap for Per Capita Income
 tmap_mode("view")
 tm_shape(census_tracts_economic) +
-  tm_polygons("PCI_2018.2022", title = "Per Capita Income", breaks = breaks, labels = labels,
+  tm_polygons("PCI_2018.2022", title = "Per Capita Income",
               palette = "YlOrRd", alpha = 0.7) +
   tm_view(set.zoom.limits = c(10, 14)) +
   tm_scale_bar() +
@@ -164,7 +140,7 @@ tm_shape(census_tracts_economic) +
 # Create an interactive heatmap using tmap for Poverty Rate
 tmap_mode("view")
 tm_shape(census_tracts_economic) +
-  tm_polygons("POV_2018.2022", title = "Poverty Rate", breaks = breaks, labels = labels,
+  tm_polygons("POV_2018.2022", title = "Poverty Rate",
               palette = "YlOrRd", alpha = 0.7) +
   tm_view(set.zoom.limits = c(10, 14)) +
   tm_scale_bar() +
@@ -181,8 +157,9 @@ census_tracts_merged <- st_join(census_tracts_economic, census_tracts_crime, joi
 # Convert the sf object to a data frame
 census_tracts_merged_df <- as.data.frame(census_tracts_merged)
 
-# Select the relevant columns
-correlation_data <- census_tracts_merged_df[, c("CRIME_COUNT", "UMP_2018.2022", "EDX_2018.2022", "HDX_2018.2022", "INC_2018.2022", "PCI_2018.2022", "POV_2018.2022")]
+# Select the relevant columns and rename them
+correlation_data <- census_tracts_merged_df[, c("CRIME_COUNT", "UMP_2018.2022", "INC_2018.2022", "PCI_2018.2022", "POV_2018.2022")]
+colnames(correlation_data) <- c("Crime Count", "Unemployment Rate", "Median Household Income", "Per Capita Income", "Poverty Rate")
 
 # Convert the columns to numeric
 correlation_data[] <- lapply(correlation_data, as.numeric)
@@ -193,75 +170,46 @@ correlation_results <- cor(correlation_data, use = "pairwise.complete.obs")
 # Print the correlation matrix
 print(correlation_results)
 ```
-## Spatial Autocorrelation Analysis
+
 ``` {r autocorr}
-# Convert the economic data to an sf object
-economic_data_sf <- st_as_sf(economic_data, coords = c("Longitude", "Latitude"), crs = 4326)
-
-# Merge the census tract shapefile with the economic data
-census_tracts_economic <- st_join(census_tracts, economic_data_sf, join = st_intersects, left = TRUE)
-
-# Aggregate the crime count by census tract
-crime_data_tract_agg <- crime_data_result %>%
-  group_by(LOCATION) %>%
-  summarize(CRIME_COUNT = sum(CRIME_COUNT, na.rm = TRUE),
-            LONGITUDE = first(LONGITUDE),
-            LATITUDE = first(LATITUDE))
-
-# Check the column names of crime_data_tract_agg
-colnames(crime_data_tract_agg)
-
-# Convert the aggregated crime data to an sf object
-crime_data_tract_agg_sf <- st_as_sf(crime_data_tract_agg, coords = c("LONGITUDE", "LATITUDE"), crs = 4326)
-
-# Merge the census tract shapefile with the aggregated crime data
-census_tracts_crime <- st_join(census_tracts, crime_data_tract_agg_sf, join = st_intersects, left = TRUE)
-
-# Merge the economic data with the crime data using a spatial join
-census_tracts_merged <- st_join(census_tracts_economic, census_tracts_crime, join = st_intersects, left = TRUE)
-
-# Convert the sf object to a data frame
-census_tracts_merged_df <- as.data.frame(census_tracts_merged)
-
-# Select the relevant columns
-correlation_data <- census_tracts_merged_df[, c("CRIME_COUNT", "UMP_2018.2022", "EDX_2018.2022", "HDX_2018.2022", "INC_2018.2022", "PCI_2018.2022", "POV_2018.2022")]
-
-# Convert the columns to numeric
-correlation_data[] <- lapply(correlation_data, as.numeric)
-
-# Calculate the correlation coefficients
-correlation_results <- cor(correlation_data, use = "pairwise.complete.obs")
-
-# Print the correlation matrix
-print(correlation_results)
+# Convert the sf object to a SpatialPolygonsDataFrame
+census_tracts_sp <- as(census_tracts_merged, "Spatial")
 
 # Create a spatial weights matrix based on queen contiguity
-weights <- poly2nb(census_tracts_crime, queen = TRUE)
-weights_listw <- nb2listw(weights, style = "B")
+weights_nb <- poly2nb(census_tracts_sp, queen = TRUE)
 
-# Calculate Moran's I statistic
-moran_i <- moran.test(census_tracts_crime$CRIME_COUNT, weights_listw)
+# Convert the weights to a listw object
+weights <- nb2listw(weights_nb, style = "W")
 
-# Print the Moran's I results
-print(moran_i)
+# Ensure the crime count variable is numeric
+census_tracts_sp$CRIME_COUNT <- as.numeric(census_tracts_sp$CRIME_COUNT)
 
-# Create a Moran plot
-moran.plot(census_tracts_crime$CRIME_COUNT, weights_listw, main = "Moran Plot of Crime Count")
+# Calculate Local Moran's I
+local_moran <- localmoran(census_tracts_sp$CRIME_COUNT, weights)
+# Check the column names of the local_moran object
+colnames(local_moran)
 
-# Perform local Moran's I analysis
-local_moran <- localmoran(census_tracts_crime$CRIME_COUNT, weights_listw)
+# Add the Local Moran's I results to the census tract data
+census_tracts_sp$local_moran_I <- local_moran[, "Ii"]
+census_tracts_sp$local_moran_p <- local_moran[, "Pr(z != E(Ii))"]
 
-# Add local Moran's I results to the census tract data
-census_tracts_crime$local_moran_i <- local_moran[, "Ii"]
-census_tracts_crime$local_moran_p <- local_moran[, "Pr.z...0."]  # Replace with the correct column name
+# Convert the SpatialPolygonsDataFrame back to an sf object
+census_tracts_lisa <- st_as_sf(census_tracts_sp)
 
-# Create a choropleth map of local Moran's I values
-tmap_mode("view")
-tm_shape(census_tracts_crime) +
-  tm_polygons("local_moran_i", title = "Local Moran's I",
-              palette = "RdBu", midpoint = 0, alpha = 0.7) +
-  tm_view(set.zoom.limits = c(10, 14)) +
-  tm_scale_bar() +
-  tm_minimap() +
-  tm_credits("Data Source: Chicago Crime Data", position = c("LEFT", "BOTTOM"))
+# Create a custom palette for the LISA map
+lisa_palette <- c("Not Significant" = "gray",
+                  "High-High" = "red",
+                  "Low-Low" = "blue",
+                  "Low-High" = "lightblue",
+                  "High-Low" = "pink")
+
+# Create the LISA map
+tmap_mode("plot")
+tm_shape(census_tracts_lisa) +
+  tm_polygons("local_moran_I", title = "Local Moran's I",
+              style = "pretty", palette = lisa_palette,
+              breaks = c(-Inf, -1.96, 1.96, Inf),
+              labels = c("Low-Low", "Not Significant", "High-High"),
+              border.col = "gray", border.alpha = 0.5) +
+  tm_layout(legend.outside = TRUE)
 ```
