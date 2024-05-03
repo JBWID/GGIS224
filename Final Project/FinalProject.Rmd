@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Libraries
 
-```{r libraries}
+```{r libraries, message=FALSE}
 library(tidyr)
 library(dplyr)
 library(sf)
@@ -25,6 +25,7 @@ library(tidycensus)
 library(httr)
 library(jsonlite)
 library(ggplot2)
+library(spdep)
 ```
 
 ## Data Wrangling for Crime Dataset
@@ -85,7 +86,8 @@ tm_shape(census_tracts_crime) +
   tm_credits("Data Source: Chicago Crime Data", position = c("LEFT", "BOTTOM"))
 ```
 
-## Data Wrangling for Crime Dataset
+
+## Data Wrangling for Economic Dataset
 ```{r cleaning}
 # Load the economic dataset
 economic_data <- read.csv("/Users/jonathanbernard/Desktop/UIUC/Spring 2024/GGIS 224/GGIS224/Final Project/Datasets/Chicago Health Atlas Data Download - Census Tracts.csv")
@@ -171,7 +173,95 @@ tm_shape(census_tracts_economic) +
 
 ```
 
-## Joining the 2 datasets
-``` {r eda}
+## Correlation Analysis
+``` {r corr}
+# Merge the aggregated crime data with the economic data using a spatial join
+census_tracts_merged <- st_join(census_tracts_economic, census_tracts_crime, join = st_intersects, left = TRUE)
 
+# Convert the sf object to a data frame
+census_tracts_merged_df <- as.data.frame(census_tracts_merged)
+
+# Select the relevant columns
+correlation_data <- census_tracts_merged_df[, c("CRIME_COUNT", "UMP_2018.2022", "EDX_2018.2022", "HDX_2018.2022", "INC_2018.2022", "PCI_2018.2022", "POV_2018.2022")]
+
+# Convert the columns to numeric
+correlation_data[] <- lapply(correlation_data, as.numeric)
+
+# Calculate the correlation coefficients
+correlation_results <- cor(correlation_data, use = "pairwise.complete.obs")
+
+# Print the correlation matrix
+print(correlation_results)
+```
+## Spatial Autocorrelation Analysis
+``` {r autocorr}
+# Convert the economic data to an sf object
+economic_data_sf <- st_as_sf(economic_data, coords = c("Longitude", "Latitude"), crs = 4326)
+
+# Merge the census tract shapefile with the economic data
+census_tracts_economic <- st_join(census_tracts, economic_data_sf, join = st_intersects, left = TRUE)
+
+# Aggregate the crime count by census tract
+crime_data_tract_agg <- crime_data_result %>%
+  group_by(LOCATION) %>%
+  summarize(CRIME_COUNT = sum(CRIME_COUNT, na.rm = TRUE),
+            LONGITUDE = first(LONGITUDE),
+            LATITUDE = first(LATITUDE))
+
+# Check the column names of crime_data_tract_agg
+colnames(crime_data_tract_agg)
+
+# Convert the aggregated crime data to an sf object
+crime_data_tract_agg_sf <- st_as_sf(crime_data_tract_agg, coords = c("LONGITUDE", "LATITUDE"), crs = 4326)
+
+# Merge the census tract shapefile with the aggregated crime data
+census_tracts_crime <- st_join(census_tracts, crime_data_tract_agg_sf, join = st_intersects, left = TRUE)
+
+# Merge the economic data with the crime data using a spatial join
+census_tracts_merged <- st_join(census_tracts_economic, census_tracts_crime, join = st_intersects, left = TRUE)
+
+# Convert the sf object to a data frame
+census_tracts_merged_df <- as.data.frame(census_tracts_merged)
+
+# Select the relevant columns
+correlation_data <- census_tracts_merged_df[, c("CRIME_COUNT", "UMP_2018.2022", "EDX_2018.2022", "HDX_2018.2022", "INC_2018.2022", "PCI_2018.2022", "POV_2018.2022")]
+
+# Convert the columns to numeric
+correlation_data[] <- lapply(correlation_data, as.numeric)
+
+# Calculate the correlation coefficients
+correlation_results <- cor(correlation_data, use = "pairwise.complete.obs")
+
+# Print the correlation matrix
+print(correlation_results)
+
+# Create a spatial weights matrix based on queen contiguity
+weights <- poly2nb(census_tracts_crime, queen = TRUE)
+weights_listw <- nb2listw(weights, style = "B")
+
+# Calculate Moran's I statistic
+moran_i <- moran.test(census_tracts_crime$CRIME_COUNT, weights_listw)
+
+# Print the Moran's I results
+print(moran_i)
+
+# Create a Moran plot
+moran.plot(census_tracts_crime$CRIME_COUNT, weights_listw, main = "Moran Plot of Crime Count")
+
+# Perform local Moran's I analysis
+local_moran <- localmoran(census_tracts_crime$CRIME_COUNT, weights_listw)
+
+# Add local Moran's I results to the census tract data
+census_tracts_crime$local_moran_i <- local_moran[, "Ii"]
+census_tracts_crime$local_moran_p <- local_moran[, "Pr.z...0."]  # Replace with the correct column name
+
+# Create a choropleth map of local Moran's I values
+tmap_mode("view")
+tm_shape(census_tracts_crime) +
+  tm_polygons("local_moran_i", title = "Local Moran's I",
+              palette = "RdBu", midpoint = 0, alpha = 0.7) +
+  tm_view(set.zoom.limits = c(10, 14)) +
+  tm_scale_bar() +
+  tm_minimap() +
+  tm_credits("Data Source: Chicago Crime Data", position = c("LEFT", "BOTTOM"))
 ```
