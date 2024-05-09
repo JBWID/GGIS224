@@ -213,3 +213,29 @@ tm_shape(census_tracts_lisa) +
               border.col = "gray", border.alpha = 0.5) +
   tm_layout(legend.outside = TRUE)
 ```
+
+
+``` {r global moran}
+# Spatial Autocorrelation (Global Moran's I)
+# Convert the sf object to a SpatialPolygonsDataFrame
+census_tracts_sp <- as(census_tracts_merged, "Spatial")
+
+# Create a spatial weights matrix based on queen contiguity
+weights_nb <- poly2nb(census_tracts_sp, queen = TRUE)
+
+# Convert the weights to a listw object
+weights <- nb2listw(weights_nb, style = "W")
+
+# Ensure the crime count variable is numeric
+census_tracts_sp$CRIME_COUNT <- as.numeric(census_tracts_sp$CRIME_COUNT)
+
+# Calculate Global Moran's I
+global_moran <- moran.test(census_tracts_sp$CRIME_COUNT, weights)
+print(global_moran)
+```
+
+``` {r eda}
+# Regression Analysis
+regression_model <- lm(CRIME_COUNT ~ Unemployment.Rate + Median.Household.Income + Per.Capita.Income + Poverty.Rate, data = correlation_data)
+summary(regression_model)
+```
